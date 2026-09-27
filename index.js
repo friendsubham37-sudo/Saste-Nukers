@@ -817,6 +817,11 @@ if (baseCommand === 'draw') {
                 // -md <number>
                 // ==========================================
 
+                                // ==========================================
+                // 1. MATCHDAY COMMAND
+                // -md <number>
+                // ==========================================
+
                 if (
                     baseCommand === 'md'
                 ) {
@@ -876,6 +881,13 @@ if (baseCommand === 'draw') {
                         );
                     }
 
+                    // Calculate the exact same deadline timestamp used by the fixture engine
+                    const deadlineTimestamp =
+                        getMatchdayDeadlineTimestamp(
+                            targetDayNum,
+                            tournament
+                        );
+
                     const matchdayEmbed =
                         new EmbedBuilder()
                             .setTitle(
@@ -887,6 +899,9 @@ if (baseCommand === 'draw') {
                             .setColor(
                                 '#2ECC71'
                             )
+                            .setFooter({
+                                text: `⏰ Complete matches by: ${new Date(deadlineTimestamp * 1000).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} (IST)`
+                            })
                             .setTimestamp();
 
                     Object.keys(
@@ -950,12 +965,16 @@ if (baseCommand === 'draw') {
                         }
                     );
 
+                    // We also append the clickable Discord style timestamp directly into the text content reply 
+                    // so players can easily read it on mobile devices without relying on embed rendering
                     return message.reply({
+                        content: `⏳ **Matchday Deadline:** <t:${deadlineTimestamp}:F>`,
                         embeds: [
                             matchdayEmbed
                         ]
                     });
                 }
+
 
                 // ==========================================
                 // 2. FIXTURE COMMAND
@@ -1928,6 +1947,110 @@ if (subCommand === 'reset') {
                         '❌ Unknown tournament subcommand.'
                     );
                 }
+                                // ==========================================
+                // -annc <TIME> COMMAND
+                // Example: -annc 7:30PM
+                // ==========================================
+                if (baseCommand === 'annc') {
+                    const timeInput = args.join(' ').trim();
+                    if (!timeInput) {
+                        return message.reply('❌ **Usage Error:** Provide a target launch time.\nExample: `-annc 7:30PM`');
+                    }
+
+                    // Look up active active tournament mapping configuration
+                    const tournament = await Tournament.findOne({
+                        guildId: message.guildId,
+                        isActive: true,
+                        status: 'complete'
+                    });
+
+                    if (!tournament) {
+                        return message.reply('❌ No active completed tournament workspace currently found in this server.');
+                    }
+
+                    // SEARCH FOR A MATCH ASSIGNED TO THIS SPECIFIC STADIUM CHANNEL
+                    let activeMatch = null;
+                    let activeMatchId = null;
+
+                    for (const [matchId, registryMatch] of tournament.matchRegistry.entries()) {
+                        const homeChan = extractChannel(registryMatch.home);
+                        const awayChan = extractChannel(registryMatch.away);
+                        
+                        // Check if the current channel matches either home or away stadium configuration
+                        if (homeChan === `<#${message.channelId}>` || awayChan === `<#${message.channelId}>`) {
+                            activeMatch = registryMatch;
+                            activeMatchId = matchId;
+                            break;
+                        }
+                    }
+
+                    if (!activeMatch) {
+                        return message.reply('❌ **Error:** No match registry data is configured for this stadium channel.');
+                    }
+
+                    // PARSE TIME STRING (Assumes India Standard Time context per deadline parameters)
+                    const timeRegex = /^(\d{1,2}):(\d{2})\s*(AM|PM)\$/i;
+                    const matchTimeParts = timeInput.match(timeRegex);
+
+                    if (!matchTimeParts) {
+                        return message.reply('❌ **Invalid Time Format!** Use `HH:MM AM/PM` configuration layout.\nExample: `-annc 7:30PM`');
+                    }
+
+                    let hours = parseInt(matchTimeParts[1], 10);
+                    const minutes = parseInt(matchTimeParts[2], 10);
+                    const ampm = matchTimeParts[3].toUpperCase();
+
+                    if (ampm === 'PM' && hours < 12) hours += 12;
+                    if (amPM === 'AM' && hours === 12) hours = 0;
+
+                    // Form target processing timestamp date bound inside local server frame
+                    const now = new Date();
+                    const targetUnlockDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, 0);
+
+                    // If user provides a time that has already passed today, assume they mean tomorrow
+                    if (targetUnlockDate <= now) {
+                        targetUnlockDate.setDate(targetUnlockDate.getDate() + 1);
+                    }
+
+                    const targetTimestamp = Math.floor(targetUnlockDate.getTime() / 1000);
+
+                    // LOCK CHANNEL PERMISSIONS IMMEDIATELY: Stop players from typing until kick-off
+                    await message.channel.permissionOverwrites.edit(message.guild.roles.everyone, {
+                        SendMessages: false
+                    }).catch(err => {
+                        console.error(err);
+                        return message.reply('❌ Failed to lock this channel. Ensure the bot has **Manage Channels** or **Manage Roles** permissions.');
+                    });
+
+                    // SAVE THE ACTION LOG TO THE DATABASE ARRAY
+                    if (!tournament.scheduledMatches) tournament.scheduledMatches = [];
+                    
+                    const homeRole = extractRole(activeMatch.home);
+                    const awayRole = extractRole(activeMatch.away);
+
+                    tournament.scheduledMatches.push({
+                        matchId: activeMatchId,
+                        channelId: message.channelId,
+                        unlockAt: targetUnlockDate,
+                        homeRole: homeRole,
+                        awayRole: awayRole,
+                        triggered: false
+                    });
+
+                    tournament.markModified('scheduledMatches');
+                    await tournament.save();
+
+                    // REMOVE ADMINISTRATIVE TRIGGER MESSAGE TO KEEP STADIUM VENUE LOOKING CLEAN
+                    await message.delete().catch(() => null);
+
+                    // BROADCAST CUSTOMIZED LAUNCH PREVIEW PREPARATIONS CONTENT
+                    return message.channel.send(
+                        `## ${homeRole} **vs** ${awayRole}\n` +
+                        `### Kick-off Time: <t:${targetTimestamp}:F>\n` +
+                        `🔒 *Stadium Locked*`
+                    );
+                }
+
 
                 // ==========================================
                 // 5. PANEL COMMAND
@@ -3804,7 +3927,58 @@ function generateUCLFixtures(
             registry
     };
 }
+// ==========================================
+// BACKGROUND AUTOMATED UNLOCK WORKER
+// Runs every 30 seconds to process match starts
+// ==========================================
+setInterval(async () => {
+    try {
+        const now = new Date();
+        
+        // Find tournaments that contain active scheduled matches waiting to unlock
+        const activeTournaments = await Tournament.find({
+            status: 'complete',
+            isActive: true,
+            "scheduledMatches.unlockAt": { \$lte: now },
+            "scheduledMatches.triggered": false
+        });
 
+        for (const tourney of activeTournaments) {
+            let updatedList = [...(tourney.scheduledMatches || [])];
+            let modified = false;
+
+            for (const sched of updatedList) {
+                if (!sched.triggered && new Date(sched.unlockAt) <= now) {
+                    sched.triggered = true;
+                    modified = true;
+
+                    const channel = await client.channels.fetch(sched.channelId).catch(() => null);
+                    if (channel && channel.isTextBased()) {
+                        // UNLOCK THE CHANNEL: Allow server members (@everyone) to type messages again
+                        await channel.permissionOverwrites.edit(channel.guild.roles.everyone, {
+                            SendMessages: true
+                        }).catch(err => console.error(`Failed to unlock channel ${channel.id}:`, err));
+
+                        // SEND LAUNCH ANNOUNCEMENT MESSAGE
+                        await channel.send(
+                            `🔔 **Match Time!**\n` +
+                            `${sched.homeRole} vs ${sched.awayRole}`
+                        ).catch(err => console.error(err));
+                    }
+                }
+            }
+
+            if (modified) {
+                tourney.scheduledMatches = updatedList;
+                // Mark sub-properties modified for Mixed Schema validation saving
+                tourney.markModified('scheduledMatches');
+                await tourney.save();
+            }
+        }
+    } catch (error) {
+        console.error('Error in automated background unlock execution routine:', error);
+    }
+}, 30000); // Evaluates every 30 seconds
 // ==========================================
 // LOGIN
 // ==========================================
