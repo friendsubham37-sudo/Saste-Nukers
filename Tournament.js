@@ -177,6 +177,11 @@ const TournamentSchema = new mongoose.Schema({
         of: mongoose.Schema.Types.Mixed,
         default: {}
     },
+        scheduledMatches: {
+        type: mongoose.Schema.Types.Mixed,
+        default: [] 
+        // Array of objects: { matchId, channelId, unlockAt (Date), homeRole, awayRole, triggered: false }
+    },
 
     // Reserved matches
     //
