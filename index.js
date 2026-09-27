@@ -2005,7 +2005,21 @@ if (subCommand === 'reset') {
 
                     // Form target processing timestamp date bound inside local server frame
                     const now = new Date();
-                    const targetUnlockDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, 0);
+
+const istParts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Kolkata',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+}).formatToParts(now);
+
+const year = Number(istParts.find(p => p.type === 'year').value);
+const month = Number(istParts.find(p => p.type === 'month').value);
+const day = Number(istParts.find(p => p.type === 'day').value);
+
+const targetUnlockDate = new Date(
+    Date.UTC(year, month - 1, day, hours, minutes, 0) - (5.5 * 60 * 60 * 1000)
+);
 
                     // If user provides a time that has already passed today, assume they mean tomorrow
                     if (targetUnlockDate <= now) {
