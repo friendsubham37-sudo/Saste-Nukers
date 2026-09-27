@@ -1,250 +1,303 @@
 const mongoose = require('mongoose');
 
-const TournamentSchema = new mongoose.Schema({
-    // Discord Context Elements
-    guildId: {
-        type: String,
-        required: true
-    },
+const TournamentSchema = new mongoose.Schema(
+    {
+        // ==========================================
+        // DISCORD CONTEXT
+        // ==========================================
 
-    channelId: {
-        type: String,
-        required: true
-    },
+        guildId: {
+            type: String,
+            required: true
+        },
 
-    setupUser: {
-        type: String,
-        required: true
-    },
+        channelId: {
+            type: String,
+            required: true
+        },
 
-    // Tournament Workspace Identity
-    name: {
-        type: String,
-        required: true
-    },
+        setupUser: {
+            type: String,
+            required: true
+        },
 
-    isActive: {
-        type: Boolean,
-        default: false
-    },
+        // ==========================================
+        // TOURNAMENT WORKSPACE IDENTITY
+        // ==========================================
 
-    // Setup Wizard Constraints
-    status: {
-        type: String,
-        enum: [
-            'setup_teams',
-            'setup_groups',
-            'ask_draw_display',
-            'setup_format',
-            'setup_ucl_matches',
-            'setup_rr_rounds',
-            'complete'
-        ],
-        default: 'setup_teams'
-    },
+        name: {
+            type: String,
+            required: true
+        },
 
-    format: {
-        type: String,
-        enum: ['ucl', 'round_robin', null],
-        default: null
-    },
+        isActive: {
+            type: Boolean,
+            default: false
+        },
 
-    rounds: {
-        type: String,
-        enum: ['single', 'double', null],
-        default: null
-    },
+        // ==========================================
+        // SETUP WIZARD
+        // ==========================================
 
-    teamsCount: {
-        type: Number,
-        default: 0
-    },
+        status: {
+            type: String,
+            enum: [
+                'setup_teams',
+                'setup_groups',
+                'ask_draw_display',
+                'setup_format',
+                'setup_ucl_matches',
+                'setup_rr_rounds',
+                'complete'
+            ],
+            default: 'setup_teams'
+        },
 
-    groupsCount: {
-        type: Number,
-        default: 1
-    },
+        format: {
+            type: String,
+            enum: ['ucl', 'round_robin', null],
+            default: null
+        },
 
-    totalMatchdays: {
-        type: Number,
-        default: 0
-    },
+        rounds: {
+            type: String,
+            enum: ['single', 'double', null],
+            default: null
+        },
 
-    // Fixed creation / generation date anchor
-    startDate: {
-        type: Date,
-        default: null
-    },
+        teamsCount: {
+            type: Number,
+            default: 0
+        },
 
-    // ==========================================
-    // MATCH SETTINGS
-    // ==========================================
+        groupsCount: {
+            type: Number,
+            default: 1
+        },
 
-    // Number of overs per match
-    overs: {
-        type: Number,
-        default: 20
-    },
+        totalMatchdays: {
+            type: Number,
+            default: 0
+        },
 
-    // Reps setting
-    reps: {
-        type: String,
-        enum: ['allowed', 'not allowed'],
-        default: 'allowed'
-    },
+        // Fixed tournament creation / generation date
+        startDate: {
+            type: Date,
+            default: null
+        },
 
-    // ==========================================
-    // DEADLINE SETTINGS
-    // ==========================================
+        // ==========================================
+        // MATCH SETTINGS
+        // ==========================================
 
-    // Matchday 1 deadline.
-    //
-    // 1 = normal 1-day deadline
-    // 2 = 2-day deadline
-    // 3 = 3-day deadline
-    //
-    // Default = 1
-    firstDayDeadlineDays: {
-        type: Number,
-        default: 1
-    },
+        // Number of overs per match
+        overs: {
+            type: Number,
+            default: 20
+        },
 
-    // Reserve deadline after the FINAL matchday.
-    //
-    // Default = 2 days
-    reserveDeadlineDays: {
-        type: Number,
-        default: 2
-    },
+        // Reps setting
+        reps: {
+            type: String,
+            enum: ['allowed', 'not allowed'],
+            default: 'allowed'
+        },
 
-    // ==========================================
-    // CORE DATA
-    // ==========================================
+        // ==========================================
+        // DEADLINE SETTINGS
+        // ==========================================
 
-    teamNames: {
-        type: [String],
-        default: []
-    },
+        // Matchday 1 deadline:
+        // 1 = normal 1-day deadline
+        // 2 = 2-day deadline
+        // 3 = 3-day deadline
+        //
+        // Default = 1 day
+        firstDayDeadlineDays: {
+            type: Number,
+            default: 1
+        },
 
-    // ==========================================
-    // LIVE DRAW SYSTEM
-    // ==========================================
+        // Reserve deadline after the FINAL matchday
+        //
+        // Default = 2 days
+        reserveDeadlineDays: {
+            type: Number,
+            default: 2
+        },
 
-    // Whether the tournament currently has
-    // an active Live Draw after generation.
-    liveDraws: {
-        type: Boolean,
-        default: false
-    },
+        // ==========================================
+        // CORE TEAM DATA
+        // ==========================================
 
-    // Stores the randomized teams inside each group.
-    //
-    // Example:
-    // {
-    //     A: ['team1', 'team2'],
-    //     B: ['team3', 'team4']
-    // }
-    drawGroups: {
-        type: mongoose.Schema.Types.Mixed,
-        default: {}
-    },
+        teamNames: {
+            type: [String],
+            default: []
+        },
 
-    // Stores how many teams have been revealed
-    // from each group.
-    //
-    // Example:
-    // {
-    //     A: 2,
-    //     B: 0
-    // }
-    drawRevealState: {
-        type: mongoose.Schema.Types.Mixed,
-        default: {}
-    },
+        // ==========================================
+        // LIVE DRAW SYSTEM
+        // ==========================================
 
-    // ==========================================
-    // FIXTURES / MATCH DATA
-    // ==========================================
+        // Whether the tournament currently has
+        // an active Live Draw after generation
+        liveDraws: {
+            type: Boolean,
+            default: false
+        },
 
-    fixtures: {
-        type: Map,
-        of: mongoose.Schema.Types.Mixed,
-        default: {}
-    },
+        // Stores randomized teams inside each group.
+        //
+        // Example:
+        // {
+        //     A: ['team1', 'team2'],
+        //     B: ['team3', 'team4']
+        // }
+        drawGroups: {
+            type: mongoose.Schema.Types.Mixed,
+            default: {}
+        },
 
-    matchRegistry: {
-        type: Map,
-        of: mongoose.Schema.Types.Mixed,
-        default: {}
-    },
+        // Stores how many teams have been revealed
+        // from each group.
+        //
+        // Example:
+        // {
+        //     A: 2,
+        //     B: 0
+        // }
+        drawRevealState: {
+            type: mongoose.Schema.Types.Mixed,
+            default: {}
+        },
+
+        // ==========================================
+        // FIXTURES / MATCH DATA
+        // ==========================================
+
+        // Matchday fixtures
+        //
+        // Example:
+        // {
+        //     day_1: [...]
+        //     day_2: [...]
+        // }
+        fixtures: {
+            type: Map,
+            of: mongoose.Schema.Types.Mixed,
+            default: {}
+        },
+
+        // Registry for generated / tracked matches
+        matchRegistry: {
+            type: Map,
+            of: mongoose.Schema.Types.Mixed,
+            default: {}
+        },
+
+        // ==========================================
+        // SCHEDULED MATCHES
+        // ==========================================
+
+        // Stores matches that are scheduled to unlock.
+        //
+        // Example object:
+        // {
+        //     matchId,
+        //     channelId,
+        //     unlockAt: Date,
+        //     homeRole,
+        //     awayRole,
+        //     triggered: false
+        // }
         scheduledMatches: {
-        type: mongoose.Schema.Types.Mixed,
-        default: [] 
-        // Array of objects: { matchId, channelId, unlockAt (Date), homeRole, awayRole, triggered: false }
-    },
+            type: [mongoose.Schema.Types.Mixed],
+            default: []
+        },
 
-    // Reserved matches
-    //
-    // Example:
-    // "123456789_15": true
-    //
-    reservedMatches: {
-        type: Map,
-        of: Boolean,
-        default: {}
-    },
+        // ==========================================
+        // RESERVED MATCHES
+        // ==========================================
 
-    // Legacy reservation storage
-    reservations: {
-        type: Map,
-        of: Boolean,
-        default: {}
-    },
+        // Reserved matches
+        //
+        // Example:
+        // "123456789_15": true
+        reservedMatches: {
+            type: Map,
+            of: Boolean,
+            default: {}
+        },
 
-    matchTimes: {
-        type: Map,
-        of: String,
-        default: {}
-    },
+        // Legacy reservation storage
+        reservations: {
+            type: Map,
+            of: Boolean,
+            default: {}
+        },
 
-    matchChannels: {
-        type: Map,
-        of: String,
-        default: {}
-    },
+        // ==========================================
+        // MATCH TIMING / CHANNEL DATA
+        // ==========================================
 
-    alertedMatches: {
-        type: Map,
-        of: Boolean,
-        default: {}
-    },
+        // Example:
+        // "123456789_15": "25/08/2026 7:20PM"
+        matchTimes: {
+            type: Map,
+            of: String,
+            default: {}
+        },
 
-    endedMatches: {
-        type: Map,
-        of: Boolean,
-        default: {}
-    },
+        // Example:
+        // "123456789_15": "channelId"
+        matchChannels: {
+            type: Map,
+            of: String,
+            default: {}
+        },
 
-    staffRoleId: {
-        type: String,
-        default: ''
-    },
+        // Tracks whether a match has already triggered an alert
+        alertedMatches: {
+            type: Map,
+            of: Boolean,
+            default: {}
+        },
 
-    staffChannelId: {
-        type: String,
-        default: ''
-    },
+        // Tracks ended matches
+        endedMatches: {
+            type: Map,
+            of: Boolean,
+            default: {}
+        },
 
-    trustedSourceId: {
-        type: String,
-        default: ''
+        // ==========================================
+        // STAFF / TRUSTED SOURCE
+        // ==========================================
+
+        staffRoleId: {
+            type: String,
+            default: ''
+        },
+
+        staffChannelId: {
+            type: String,
+            default: ''
+        },
+
+        trustedSourceId: {
+            type: String,
+            default: ''
+        }
+    },
+    {
+        timestamps: true
     }
+);
 
-}, {
-    timestamps: true
-});
+// ==========================================
+// UNIQUE TOURNAMENT NAMES PER DISCORD SERVER
+// ==========================================
 
-// Unique tournament names per Discord server
 TournamentSchema.index(
     { guildId: 1, name: 1 },
     { unique: true }
