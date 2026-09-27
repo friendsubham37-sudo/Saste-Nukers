@@ -370,27 +370,27 @@ if (baseCommand === 'help') {
         .setColor('#3498DB')
         .addFields(
             { 
-                name: '🏟️ Tournament Workspace Wizard (`-tourney`)', 
+                name: '🏟️ Tournament Maker (`-tourney`)', 
                 value: '• `-tourney make <name>` — Launch the server creation manager wizard.\n• `-tourney open <name>` — Load a specific tournament file as active.\n• `-tourney all` — View every tournament registry saved to this guild.\n• `-tourney cancel` — Abort an open step-by-step setup wizard.\n• `-tourney reset` — Completely wipe out the database layout history.' 
             },
             { 
-                name: '📅 Matchday Grid Directories (`-md`)', 
+                name: '📅 Tournament Matchday (`-md`)', 
                 value: '• `-md <number>` — Output structural game sheets for a targeted matchday stage (e.g., `-md 1`).' 
             },
             { 
-                name: '📌 Regular Fixture Configurations (`-fixture`)', 
+                name: '📌 Tournament Fixtures (`-fixture`)', 
                 value: '• `-fixture <number>` — Output custom matchday schedule logs for teams.\n• `-fixture reserve` — Output structural calendars for items sitting on standby flags.' 
             },
             { 
-                name: '⏱️ Backup Standby Management (`-reserve`)', 
+                name: '⏱️ Reserver Tournament Matches (`-reserve`)', 
                 value: '• `-reserve` — View all active entries waiting on the overflow queue.\n• `-reserve <match_num>` — Push a standard tournament match to the standby reservation list.' 
             },
             { 
-                name: '⚙️ Parameter Controls (`-panel`)', 
+                name: '⚙️ Fixture Settings (`-panel`)', 
                 value: '• `-panel` — View global parameters (Overs, Deadlines, Player Reps settings).\n• `-panel overs <number>` — Change matching frame counts (e.g., `-panel overs 20`).\n• `-panel reps <allowed/not allowed>` — Toggle team player rotation rules.\n• `-panel fd <days>` — Configure opening phase timeline restrictions.\n• `-panel rd <days>` — Configure wrapping phase calendar boundaries.' 
             },
             { 
-                name: '🔑 Bot Access Security Management (`-admin` / `-mod`)', 
+                name: '🔑 Bot Access Security (`-admin` / `-mod`)', 
                 value: '• `-admin <@user/ID>` — Appoint a platform Bot Administrator.\n• `-admin list` / `-admin remove <@user>` — Review and adjust administrative tier slots.\n• `-mod <@user/ID>` — Appoint a structural staff Moderator.\n• `-mod list` / `-mod remove <@user>` — Review and manage server moderator positions.' 
             }
         )
