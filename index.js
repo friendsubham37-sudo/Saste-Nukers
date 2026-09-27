@@ -360,6 +360,7 @@ client.on(
                         `✅ **${targetUser.username}** is now a **Bot Admin**.`
                     );
                 }
+
                 // ===============================
 // -help COMMAND
 // ===============================
@@ -998,311 +999,31 @@ if (baseCommand === 'draw') {
 
                             status:
                                 'complete'
-                        });
+                                .setTitle(
+                                    `📌 Match ${requestedMatchNumber} Reserved`
+                                )
+                                .setDescription(
+                                    `**${homeRole}** vs **${awayRole}**\n\n` +
+                                    `This match has been moved to the **Reserved Matches** list.`
+                                )
+                                .setColor(
+                                    '#F1C40F'
+                                )
+                                .setTimestamp();
 
-                    if (!tournament) {
-
-                        return message.reply(
-                            '❌ No active completed tournament workspace found.'
-                        );
-                    }
-
-                    // ==========================================
-                    // -fixture reserve
-                    // ==========================================
-
-                    if (
-                        fixtureType ===
-                        'reserve'
-                    ) {
-
-                        const reservedMatches =
-                            tournament.reservedMatches ||
-                            new Map();
-
-                        const reservedList =
-                            [];
-
-                        for (
-                            const [
-                                matchId,
-                                isReserved
-                            ]
-                            of reservedMatches.entries()
-                        ) {
-
-                            if (
-                                !isReserved
-                            ) {
-                                continue;
-                            }
-
-                            const registryMatch =
-                                tournament.matchRegistry.get(
-                                    matchId
-                                );
-
-                            if (!registryMatch) {
-                                continue;
-                            }
-
-                            reservedList.push({
-                                matchId,
-                                ...registryMatch
-                            });
-                        }
-
-                        if (
-                            reservedList.length ===
-                            0
-                        ) {
-
-                            return message.reply(
-                                '❌ There are currently no reserved matches.'
-                            );
-                        }
-
-                        reservedList.sort(
-                            (
-                                a,
-                                b
-                            ) => {
-
-                                if (
-                                    a.day !==
-                                    b.day
-                                ) {
-
-                                    return (
-                                        a.day -
-                                        b.day
-                                    );
-                                }
-
-                                return (
-                                    getNumericMatchId(
-                                        a.matchId
-                                    ) -
-                                    getNumericMatchId(
-                                        b.matchId
-                                    )
-                                );
-                            }
-                        );
-
-                        let output =
-                            `# Schedule for Reserved Matches\n\n` +
-                            `## ${tournament.name}\n\n`;
-
-                        let currentGroup =
-                            null;
-
-                        reservedList.forEach(
-                            match => {
-
-                                const groupName =
-                                    match.group.toUpperCase();
-
-                                if (
-                                    currentGroup !==
-                                    groupName
-                                ) {
-
-                                    currentGroup =
-                                        groupName;
-
-                                    output +=
-                                        `## Group ${groupName}\n`;
-                                }
-
-                                const homeRole =
-                                    extractRole(
-                                        match.home
-                                    );
-
-                                const awayRole =
-                                    extractRole(
-                                        match.away
-                                    );
-
-                                const homeStadium =
-                                    extractChannel(
-                                        match.home
-                                    );
-
-                                const awayStadium =
-                                    extractChannel(
-                                        match.away
-                                    );
-
-                                const assignedStadium =
-                                    chooseStadium(
-                                        homeStadium,
-                                        awayStadium
-                                    );
-
-                                output +=
-                                    `### Match ${getDisplayIdFromMatchId(match.matchId, tournament)}\n` +
-                                    `- ${homeRole} vs ${awayRole} in ${assignedStadium}\n`;
-                            }
-                        );
-
-                        const reserveDeadline =
-                            getReserveDeadlineTimestamp(
-                                tournament
-                            );
-
-                        output +=
-                            `\n- Complete matches by: **<t:${reserveDeadline}:F>**\n` +
-                            `- Team Captains may decide on a **mutual time**..\n` +
-                            `- Must do \`.tm\`, \`.ctn\` & \`.o ${tournament.overs ?? 20}\` before starting the match.\n` +
-                            `- Matches must be **completed** in the given deadline.\n` +
-                            `- **Reps ${tournament.reps ?? 'allowed'}**\n\n` +
-                            `### GOOD LUCK`;
-
-                        return message.reply(
-                            output
-                        );
-                    }
-
-                    // ==========================================
-                    // NORMAL FIXTURE
-                    // ==========================================
-
-                    const targetDayNum =
-                        parseInt(
-                            args[0],
-                            10
-                        );
-
-                    if (!targetDayNum) {
-
-                        return message.reply(
-                            '❌ Please specify a valid matchday number.\n' +
-                            'Examples:\n' +
-                            '`-fixture 1`\n' +
-                            '`-fixture reserve`'
-                        );
-                    }
-
-                    if (
-                        targetDayNum < 1 ||
-                        targetDayNum >
-                        tournament.totalMatchdays
-                    ) {
-
-                        return message.reply(
-                            `❌ Invalid matchday. This tournament has exactly **${tournament.totalMatchdays}** matchdays.`
-                        );
-                    }
-
-                    const matchdayData =
-                        tournament.fixtures.get(
-                            `day_${targetDayNum}`
-                        );
-
-                    if (!matchdayData) {
-
-                        return message.reply(
-                            '❌ Error fetching matchday fixtures.'
-                        );
-                    }
-
-                    const deadline =
-                        getMatchdayDeadlineTimestamp(
-                            targetDayNum,
-                            tournament
-                        );
-
-                    const totalOvers =
-                        tournament.overs ??
-                        20;
-
-                    const repsSetting =
-                        tournament.reps ??
-                        'allowed';
-
-                    let output =
-                        `# Schedule for Matchday ${targetDayNum}\n\n` +
-                        `## ${tournament.name}\n\n`;
-
-                    Object.keys(
-                        matchdayData
-                    ).forEach(
-                        groupName => {
-
-                            const matches =
-                                matchdayData[
-                                    groupName
-                                ];
-
-                            if (
-                                !matches ||
-                                matches.length ===
-                                0
-                            ) {
-                                return;
-                            }
-
-                            output +=
-                                `## Group ${groupName.toUpperCase()}\n`;
-
-                            matches.forEach(
-                                match => {
-
-                                    const homeRole =
-                                        extractRole(
-                                            match.home
-                                        );
-
-                                    const awayRole =
-                                        extractRole(
-                                            match.away
-                                        );
-
-                                    const homeStadium =
-                                        extractChannel(
-                                            match.home
-                                        );
-
-                                    const awayStadium =
-                                        extractChannel(
-                                            match.away
-                                        );
-
-                                    const assignedStadium =
-                                        chooseStadium(
-                                            homeStadium,
-                                            awayStadium
-                                        );
-
-                                    output +=
-                                        `### Match ${match.displayId}\n` +
-                                        `- ${homeRole} vs ${awayRole} in ${assignedStadium}\n`;
-                                }
-                            );
-                        }
-                    );
-
-                    output +=
-                        `\n- Complete matches by: **<t:${deadline}:F>**\n` +
-                        `- Team Captains may decide on a **mutual time**..\n` +
-                        `- Must do \`.tm\`, \`.ctn\` & \`.o ${totalOvers}\` before starting the match.\n` +
-                        `- Matches must be **completed** in the given deadline.\n` +
-                        `- **Reps ${repsSetting}**\n\n` +
-                        `### GOOD LUCK`;
-
-                    return message.reply(
-                        output
-                    );
+                    return message.reply({
+                        embeds: [
+                            reserveEmbed
+                        ]
+                    });
                 }
 
                 // ==========================================
-                // 3. RESERVE COMMAND
+                // 4. PANEL COMMAND
                 // ==========================================
 
                 if (
-                    baseCommand === 'reserve'
+                    baseCommand === 'panel'
                 ) {
 
                     const tournament =
@@ -1324,280 +1045,936 @@ if (baseCommand === 'draw') {
                         );
                     }
 
-                    const reservedMatches =
-                        tournament.reservedMatches ||
-                        new Map();
+                    const panelAction =
+                        args[0]
+                            ?.toLowerCase();
 
                     // ==========================================
-                    // -reserve
+                    // -panel
+                    // ==========================================
+
+                    if (!panelAction) {
+
+                        const panelEmbed =
+                            new EmbedBuilder()
+                                .setTitle(
+                                    `⚙️ Tournament Settings — ${tournament.name}`
+                                )
+                                .setColor(
+                                    '#3498DB'
+                                )
+                                .addFields(
+                                    {
+                                        name:
+                                            '🏏 Overs',
+
+                                        value:
+                                            `\`${tournament.overs ?? 20}\` overs`
+                                    },
+                                    {
+                                        name:
+                                            '🔄 Reps',
+
+                                        value:
+                                            `\`${tournament.reps ?? 'allowed'}\``
+                                    },
+                                    {
+                                        name:
+                                            '📅 Fixture Deadline',
+
+                                        value:
+                                            `\`${tournament.fixtureDeadlineDays ?? tournament.fd ?? 1}\` day(s)`
+                                    },
+                                    {
+                                        name:
+                                            '🏁 Reserve Deadline',
+
+                                        value:
+                                            `\`${tournament.reserveDeadlineDays ?? tournament.rd ?? 2}\` day(s)`
+                                    }
+                                )
+                                .setFooter({
+                                    text:
+                                        'Use -panel overs, -panel reps, -panel fd or -panel rd to change settings.'
+                                })
+                                .setTimestamp();
+
+                        return message.reply({
+                            embeds: [
+                                panelEmbed
+                            ]
+                        });
+                    }
+
+                    // ==========================================
+                    // -panel overs <number>
                     // ==========================================
 
                     if (
-                        args.length ===
-                        0
+                        panelAction ===
+                        'overs'
                     ) {
 
-                        const reservedList =
-                            [];
-
-                        for (
-                            const [
-                                matchId,
-                                isReserved
-                            ]
-                            of reservedMatches.entries()
-                        ) {
-
-                            if (
-                                !isReserved
-                            ) {
-                                continue;
-                            }
-
-                            const registryMatch =
-                                tournament.matchRegistry.get(
-                                    matchId
-                                );
-
-                            if (!registryMatch) {
-                                continue;
-                            }
-
-                            reservedList.push({
-                                matchId,
-                                ...registryMatch
-                            });
-                        }
+                        const overs =
+                            parseInt(
+                                args[1],
+                                10
+                            );
 
                         if (
-                            reservedList.length ===
+                            !Number.isInteger(
+                                overs
+                            ) ||
+                            overs < 1 ||
+                            overs > 50
+                        ) {
+
+                            return message.reply(
+                                '❌ Please provide a valid number of overs between **1 and 50**.'
+                            );
+                        }
+
+                        tournament.overs =
+                            overs;
+
+                        await tournament.save();
+
+                        return message.reply(
+                            `✅ Tournament overs have been changed to **${overs}**.`
+                        );
+                    }
+
+                    // ==========================================
+                    // -panel reps <allowed/not allowed>
+                    // ==========================================
+
+                    if (
+                        panelAction ===
+                        'reps'
+                    ) {
+
+                        const reps =
+                            args
+                                .slice(1)
+                                .join(' ')
+                                .toLowerCase();
+
+                        if (
+                            reps !==
+                                'allowed' &&
+                            reps !==
+                                'not allowed'
+                        ) {
+
+                            return message.reply(
+                                '❌ Please use either `allowed` or `not allowed`.\nExample: `-panel reps allowed`'
+                            );
+                        }
+
+                        tournament.reps =
+                            reps;
+
+                        await tournament.save();
+
+                        return message.reply(
+                            `✅ Player reps are now **${reps}**.`
+                        );
+                    }
+
+                    // ==========================================
+                    // -panel fd <days>
+                    // ==========================================
+
+                    if (
+                        panelAction ===
+                        'fd'
+                    ) {
+
+                        const days =
+                            parseInt(
+                                args[1],
+                                10
+                            );
+
+                        if (
+                            !Number.isInteger(
+                                days
+                            ) ||
+                            days < 1
+                        ) {
+
+                            return message.reply(
+                                '❌ Please provide a valid number of days.'
+                            );
+                        }
+
+                        tournament.fixtureDeadlineDays =
+                            days;
+
+                        tournament.fd =
+                            days;
+
+                        await tournament.save();
+
+                        return message.reply(
+                            `✅ Fixture deadline has been changed to **${days} day(s)**.`
+                        );
+                    }
+
+                    // ==========================================
+                    // -panel rd <days>
+                    // ==========================================
+
+                    if (
+                        panelAction ===
+                        'rd'
+                    ) {
+
+                        const days =
+                            parseInt(
+                                args[1],
+                                10
+                            );
+
+                        if (
+                            !Number.isInteger(
+                                days
+                            ) ||
+                            days < 1
+                        ) {
+
+                            return message.reply(
+                                '❌ Please provide a valid number of days.'
+                            );
+                        }
+
+                        tournament.reserveDeadlineDays =
+                            days;
+
+                        tournament.rd =
+                            days;
+
+                        await tournament.save();
+
+                        return message.reply(
+                            `✅ Reserve deadline has been changed to **${days} day(s)**.`
+                        );
+                    }
+
+                    return message.reply(
+                        '❌ Unknown panel setting.\nUse `-panel` to view the available settings.'
+                    );
+                }
+
+                // ==========================================
+                // 5. TOURNEY COMMAND
+                // ==========================================
+
+                if (
+                    baseCommand === 'tourney'
+                ) {
+
+                    const action =
+                        args[0]
+                            ?.toLowerCase();
+
+                    // ==========================================
+                    // -tourney cancel
+                    // ==========================================
+
+                    if (
+                        action ===
+                        'cancel'
+                    ) {
+
+                        if (
+                            !activeSetup
+                        ) {
+
+                            return message.reply(
+                                '❌ There is no active tournament setup to cancel.'
+                            );
+                        }
+
+                        await Tournament.deleteOne({
+                            _id:
+                                activeSetup._id
+                        });
+
+                        return message.reply(
+                            '✅ The active tournament setup has been cancelled.'
+                        );
+                    }
+
+                    // ==========================================
+                    // -tourney all
+                    // ==========================================
+
+                    if (
+                        action ===
+                        'all'
+                    ) {
+
+                        const tournaments =
+                            await Tournament.find({
+                                guildId:
+                                    message.guildId
+                            })
+                            .sort({
+                                createdAt:
+                                    1
+                            });
+
+                        if (
+                            tournaments.length ===
                             0
                         ) {
 
                             return message.reply(
-                                '📭 **No reserved matches currently.**'
+                                '📭 No tournaments have been created in this server yet.'
                             );
                         }
 
-                        reservedList.sort(
-                            (
-                                a,
-                                b
-                            ) => {
+                        const tournamentList =
+                            tournaments
+                                .map(
+                                    (
+                                        tournament,
+                                        index
+                                    ) => {
 
-                                if (
-                                    a.day !==
-                                    b.day
-                                ) {
+                                        const active =
+                                            tournament.isActive
+                                                ? ' 🟢 **ACTIVE**'
+                                                : '';
 
-                                    return (
-                                        a.day -
-                                        b.day
-                                    );
-                                }
+                                        const status =
+                                            tournament.status ||
+                                            'unknown';
 
-                                return (
-                                    getNumericMatchId(
-                                        a.matchId
-                                    ) -
-                                    getNumericMatchId(
-                                        b.matchId
-                                    )
-                                );
-                            }
-                        );
-
-                        const reserveEmbed =
-                            new EmbedBuilder()
-                                .setTitle(
-                                    `📋 Reserved Matches — ${tournament.name}`
+                                        return (
+                                            `${index + 1}. **${tournament.name}** — ` +
+                                            `${status}${active}`
+                                        );
+                                    }
                                 )
-                                .setColor(
-                                    '#F1C40F'
-                                )
-                                .setTimestamp();
+                                .join('\n');
 
-                        const grouped =
-                            {};
-
-                        reservedList.forEach(
-                            match => {
-
-                                const group =
-                                    match.group.toUpperCase();
-
-                                if (
-                                    !grouped[group]
-                                ) {
-
-                                    grouped[group] =
-                                        [];
-                                }
-
-                                const homeRole =
-                                    extractRole(
-                                        match.home
-                                    );
-
-                                const awayRole =
-                                    extractRole(
-                                        match.away
-                                    );
-
-                                grouped[group].push(
-                                    `**Match ${getDisplayIdFromMatchId(match.matchId, tournament)}** — ${homeRole} vs ${awayRole} *(MD ${match.day})*`
-                                );
-                            }
+                        return message.reply(
+                            `# 🏆 Tournament Registry\n\n${tournamentList}`
                         );
-
-                        Object.keys(
-                            grouped
-                        ).forEach(
-                            group => {
-
-                                reserveEmbed.addFields({
-                                    name:
-                                        `Group ${group}`,
-
-                                    value:
-                                        grouped[group].join(
-                                            '\n'
-                                        )
-                                });
-                            }
-                        );
-
-                        reserveEmbed.setFooter({
-                            text:
-                                `Reserve deadline: ${tournament.reserveDeadlineDays ?? 2} day(s) after final matchday`
-                        });
-
-                        return message.reply({
-                            embeds: [
-                                reserveEmbed
-                            ]
-                        });
                     }
 
                     // ==========================================
-                    // RESERVE SPECIFIC MATCH
+                    // -tourney reset
                     // ==========================================
 
-                    const requestedMatchNumber =
+                    if (
+                        action ===
+                        'reset'
+                    ) {
+
+                        if (
+                            !(await hasBotAdminAccess(
+                                message.author.id
+                            ))
+                        ) {
+
+                            return message.reply(
+                                '❌ Only the **Bot Owner** or a **Bot Admin** can reset tournament data.'
+                            );
+                        }
+
+                        const deleted =
+                            await Tournament.deleteMany({
+                                guildId:
+                                    message.guildId
+                            });
+
+                        return message.reply(
+                            `🗑️ Tournament database reset complete.\nDeleted **${deleted.deletedCount}** tournament record(s).`
+                        );
+                    }
+
+                    // ==========================================
+                    // -tourney open <name>
+                    // ==========================================
+
+                    if (
+                        action ===
+                        'open'
+                    ) {
+
+                        const tournamentName =
+                            args
+                                .slice(1)
+                                .join(' ')
+                                .trim();
+
+                        if (!tournamentName) {
+
+                            return message.reply(
+                                '❌ Please provide the tournament name.\nExample: `-tourney open SNPL S6`'
+                            );
+                        }
+
+                        const tournament =
+                            await Tournament.findOne({
+                                guildId:
+                                    message.guildId,
+
+                                name:
+                                    tournamentName
+                            });
+
+                        if (!tournament) {
+
+                            return message.reply(
+                                `❌ Tournament **${tournamentName}** was not found.`
+                            );
+                        }
+
+                        await Tournament.updateMany(
+                            {
+                                guildId:
+                                    message.guildId,
+
+                                _id: {
+                                    $ne:
+                                        tournament._id
+                                }
+                            },
+                            {
+                                $set: {
+                                    isActive:
+                                        false
+                                }
+                            }
+                        );
+
+                        tournament.isActive =
+                            true;
+
+                        await tournament.save();
+
+                        return message.reply(
+                            `✅ **${tournament.name}** is now the active tournament.`
+                        );
+                    }
+
+                    // ==========================================
+                    // -tourney make <name>
+                    // ==========================================
+
+                    if (
+                        action ===
+                        'make'
+                    ) {
+
+                        const tournamentName =
+                            args
+                                .slice(1)
+                                .join(' ')
+                                .trim();
+
+                        if (!tournamentName) {
+
+                            return message.reply(
+                                '❌ Please provide a tournament name.\nExample: `-tourney make SNPL S6`'
+                            );
+                        }
+
+                        const existing =
+                            await Tournament.findOne({
+                                guildId:
+                                    message.guildId,
+
+                                name:
+                                    tournamentName
+                            });
+
+                        if (existing) {
+
+                            return message.reply(
+                                `❌ A tournament named **${tournamentName}** already exists in this server.`
+                            );
+                        }
+
+                        const newTournament =
+                            new Tournament({
+                                guildId:
+                                    message.guildId,
+
+                                channelId:
+                                    message.channelId,
+
+                                name:
+                                    tournamentName,
+
+                                status:
+                                    'setup',
+
+                                isActive:
+                                    false
+                            });
+
+                        await newTournament.save();
+
+                        return message.reply(
+                            `✅ Tournament **${tournamentName}** has been created.\n\n` +
+                            `The tournament setup manager is ready to continue configuration.`
+                        );
+                    }
+
+                    return message.reply(
+                        '❌ Unknown tournament command.\nUse `-help` to view the available commands.'
+                    );
+                }
+
+                // ==========================================
+                // UNKNOWN COMMAND
+                // ==========================================
+
+                return;
+            }
+
+            // ==========================================
+            // NON-PREFIX SETUP HANDLER
+            // ==========================================
+
+            if (
+                activeSetup &&
+                activeSetup.status !==
+                    'complete'
+            ) {
+
+                // ==========================================
+                // ACTIVE TOURNAMENT SETUP
+                // ==========================================
+
+                const setupStep =
+                    activeSetup.setupStep;
+
+                if (
+                    setupStep ===
+                    'name'
+                ) {
+
+                    activeSetup.name =
+                        message.content.trim();
+
+                    activeSetup.setupStep =
+                        'teams';
+
+                    await activeSetup.save();
+
+                    return message.reply(
+                        `✅ Tournament name set to **${activeSetup.name}**.\n\n` +
+                        `Now provide the teams, one per line.`
+                    );
+                }
+
+                if (
+                    setupStep ===
+                    'teams'
+                ) {
+
+                    const teams =
+                        message.content
+                            .split('\n')
+                            .map(
+                                team =>
+                                    team.trim()
+                            )
+                            .filter(
+                                Boolean
+                            );
+
+                    if (
+                        teams.length <
+                        2
+                    ) {
+
+                        return message.reply(
+                            '❌ Please provide at least **2 teams**, one per line.'
+                        );
+                    }
+
+                    activeSetup.teams =
+                        teams;
+
+                    activeSetup.setupStep =
+                        'groups';
+
+                    await activeSetup.save();
+
+                    return message.reply(
+                        `✅ **${teams.length} teams** added.\n\n` +
+                        `Now provide the number of groups.`
+                    );
+                }
+
+                if (
+                    setupStep ===
+                    'groups'
+                ) {
+
+                    const groups =
                         parseInt(
-                            args[0],
+                            message.content.trim(),
                             10
                         );
 
                     if (
-                        isNaN(
-                            requestedMatchNumber
+                        !Number.isInteger(
+                            groups
                         ) ||
-                        requestedMatchNumber < 1
+                        groups < 1
                     ) {
 
                         return message.reply(
-                            '❌ Please provide a valid match number.\nExample: `-reserve 15`'
+                            '❌ Please provide a valid number of groups.'
                         );
                     }
 
-                    let foundMatch =
-                        null;
-
-                    let foundMatchId =
-                        null;
-
-                    for (
-                        const [
-                            matchId,
-                            registryMatch
-                        ]
-                        of tournament.matchRegistry.entries()
+                    if (
+                        groups >
+                        activeSetup.teams.length
                     ) {
 
-                        const displayId =
-                            getDisplayIdFromMatchId(
-                                matchId,
-                                tournament
-                            );
+                        return message.reply(
+                            '❌ The number of groups cannot exceed the number of teams.'
+                        );
+                    }
 
-                        if (
-                            displayId ===
-                            requestedMatchNumber
-                        ) {
+                    activeSetup.groupCount =
+                        groups;
 
-                            foundMatch =
-                                registryMatch;
+                    activeSetup.setupStep =
+                        'overs';
 
-                            foundMatchId =
-                                matchId;
+                    await activeSetup.save();
 
-                            break;
+                    return message.reply(
+                        `✅ Number of groups set to **${groups}**.\n\n` +
+                        `Now provide the number of overs per match.`
+                    );
+                }
+
+                if (
+                    setupStep ===
+                    'overs'
+                ) {
+
+                    const overs =
+                        parseInt(
+                            message.content.trim(),
+                            10
+                        );
+
+                    if (
+                        !Number.isInteger(
+                            overs
+                        ) ||
+                        overs < 1 ||
+                        overs > 50
+                    ) {
+
+                        return message.reply(
+                            '❌ Please provide a valid number of overs between **1 and 50**.'
+                        );
+                    }
+
+                    activeSetup.overs =
+                        overs;
+
+                    activeSetup.setupStep =
+                        'reps';
+
+                    await activeSetup.save();
+
+                    return message.reply(
+                        `✅ Overs set to **${overs}**.\n\n` +
+                        `Are player replacements/reps **allowed** or **not allowed**?`
+                    );
+                }
+
+                if (
+                    setupStep ===
+                    'reps'
+                ) {
+
+                    const reps =
+                        message.content
+                            .trim()
+                            .toLowerCase();
+
+                    if (
+                        reps !==
+                            'allowed' &&
+                        reps !==
+                            'not allowed'
+                    ) {
+
+                        return message.reply(
+                            '❌ Please reply with exactly **allowed** or **not allowed**.'
+                        );
+                    }
+
+                    activeSetup.reps =
+                        reps;
+
+                    activeSetup.setupStep =
+                        'fixtureDeadline';
+
+                    await activeSetup.save();
+
+                    return message.reply(
+                        `✅ Reps are **${reps}**.\n\n` +
+                        `How many days should teams have to complete each matchday?`
+                    );
+                }
+
+                if (
+                    setupStep ===
+                    'fixtureDeadline'
+                ) {
+
+                    const days =
+                        parseInt(
+                            message.content.trim(),
+                            10
+                        );
+
+                    if (
+                        !Number.isInteger(
+                            days
+                        ) ||
+                        days < 1
+                    ) {
+
+                        return message.reply(
+                            '❌ Please provide a valid number of days.'
+                        );
+                    }
+
+                    activeSetup.fixtureDeadlineDays =
+                        days;
+
+                    activeSetup.fd =
+                        days;
+
+                    activeSetup.setupStep =
+                        'reserveDeadline';
+
+                    await activeSetup.save();
+
+                    return message.reply(
+                        `✅ Matchday deadline set to **${days} day(s)**.\n\n` +
+                        `How many days should be allowed for reserved matches?`
+                    );
+                }
+
+                if (
+                    setupStep ===
+                    'reserveDeadline'
+                ) {
+
+                    const days =
+                        parseInt(
+                            message.content.trim(),
+                            10
+                        );
+
+                    if (
+                        !Number.isInteger(
+                            days
+                        ) ||
+                        days < 1
+                    ) {
+
+                        return message.reply(
+                            '❌ Please provide a valid number of days.'
+                        );
+                    }
+
+                    activeSetup.reserveDeadlineDays =
+                        days;
+
+                    activeSetup.rd =
+                        days;
+
+                    activeSetup.setupStep =
+                        'complete';
+
+                    activeSetup.status =
+                        'complete';
+
+                    activeSetup.isActive =
+                        true;
+
+                    await Tournament.updateMany(
+                        {
+                            guildId:
+                                message.guildId,
+
+                            _id: {
+                                $ne:
+                                    activeSetup._id
+                            }
+                        },
+                        {
+                            $set: {
+                                isActive:
+                                    false
+                            }
                         }
-                    }
-
-                    if (!foundMatch) {
-
-                        return message.reply(
-                            `❌ Match **${requestedMatchNumber}** could not be found.`
-                        );
-                    }
-
-                    const existingReservation =
-                        reservedMatches.get(
-                            foundMatchId
-                        );
-
-                    if (
-                        existingReservation ===
-                        true
-                    ) {
-
-                        return message.reply(
-                            `⚠️ Match **${requestedMatchNumber}** is already reserved.`
-                        );
-                    }
-
-                    if (
-                        !tournament.reservedMatches
-                    ) {
-
-                        tournament.reservedMatches =
-                            new Map();
-                    }
-
-                    tournament.reservedMatches.set(
-                        foundMatchId,
-                        true
                     );
 
-                    if (
-                        !tournament.reservations
-                    ) {
+                    await activeSetup.save();
 
-                        tournament.reservations =
-                            new Map();
-                    }
-
-                    tournament.reservations.set(
-                        foundMatchId,
-                        true
+                    return message.reply(
+                        `✅ Reserve deadline set to **${days} day(s)**.\n\n` +
+                        `🎉 **Tournament setup is complete!**\n` +
+                        `Tournament **${activeSetup.name}** is now active.`
                     );
+                }
+            }
 
-                    await tournament.save();
+        } catch (error) {
 
-                    const homeRole =
-                        extractRole(
-                            foundMatch.home
-                        );
+            console.error(
+                'Message handler error:',
+                error
+            );
 
-                    const awayRole =
-                        extractRole(
-                            foundMatch.away
-                        );
+            return message.reply(
+                '❌ An unexpected error occurred while processing that command.'
+            )
+                .catch(
+                    () => {}
+                );
+        }
+    }
+);
 
-                    const reserveEmbed =
-                        new EmbedBuilder()
+// ==========================================
+// HELPER FUNCTIONS
+// ==========================================
+
+function extractRole(value) {
+
+    if (!value) {
+        return 'Unknown Team';
+    }
+
+    const match =
+        String(value).match(
+            /<@&(\d+)>/
+        );
+
+    if (match) {
+        return `<@&${match[1]}>`;
+    }
+
+    return String(value);
+}
+
+function extractChannel(value) {
+
+    if (!value) {
+        return 'Unknown Stadium';
+    }
+
+    const match =
+        String(value).match(
+            /<#(\d+)>/
+        );
+
+    if (match) {
+        return `<#${match[1]}>`;
+    }
+
+    return String(value);
+}
+
+function chooseStadium(
+    homeStadium,
+    awayStadium
+) {
+
+    if (
+        homeStadium &&
+        homeStadium !==
+            'Unknown Stadium'
+    ) {
+
+        return homeStadium;
+    }
+
+    if (
+        awayStadium &&
+        awayStadium !==
+            'Unknown Stadium'
+    ) {
+
+        return awayStadium;
+    }
+
+    return 'TBD';
+}
+
+function getNumericMatchId(
+    matchId
+) {
+
+    if (!matchId) {
+        return 0;
+    }
+
+    const match =
+        String(matchId).match(
+            /(\d+)$/
+        );
+
+    if (!match) {
+        return 0;
+    }
+
+    return parseInt(
+        match[1],
+        10
+    );
+}
+
+function getDisplayIdFromMatchId(
+    matchId,
+    tournament
+) {
+
+    if (
+        tournament &&
+        tournament.matchRegistry
+    ) {
+
+        const registryMatch =
+            tournament.matchRegistry.get(
+                matchId
+            );
+
+        if (
+            registryMatch &&
+            registryMatch.displayId
+        ) {
+
+            return registryMatch.displayId;
+        }
+    }
+
+    return getNumericMatchId(
+        matchId
+    );
+}
                             .setTitle(
                                 '📌 Match Reserved'
                             )
@@ -1671,25 +2048,26 @@ if (baseCommand === 'draw') {
                             '❌ **Invalid Usage:** Use `-tourney make`, `-tourney all`, `-tourney open`, or `-tourney cancel`.'
                         );
                     }
+
                     // ==========================================
-// RESET ALL TOURNAMENTS
-// -tourney reset
-// ==========================================
+                    // RESET ALL TOURNAMENTS
+                    // -tourney reset
+                    // ==========================================
 
-if (subCommand === 'reset') {
+                    if (subCommand === 'reset') {
 
-    const result =
-        await Tournament.deleteMany({
-            guildId:
-                message.guildId
-        });
+                        const result =
+                            await Tournament.deleteMany({
+                                guildId:
+                                    message.guildId
+                            });
 
-    return message.reply(
-        `🗑️ **Tournament Database Reset Complete!**\n\n` +
-        `Deleted **${result.deletedCount}** tournament(s) from this server.\n\n` +
-        `There is now **no tournament workspace** available.`
-    );
-}
+                        return message.reply(
+                            `🗑️ **Tournament Database Reset Complete!**\n\n` +
+                            `Deleted **${result.deletedCount}** tournament(s) from this server.\n\n` +
+                            `There is now **no tournament workspace** available.`
+                        );
+                    }
 
                     // ==========================================
                     // CREATE
@@ -1947,110 +2325,261 @@ if (subCommand === 'reset') {
                         '❌ Unknown tournament subcommand.'
                     );
                 }
-                                // ==========================================
+
+                // ==========================================
                 // -annc <TIME> COMMAND
                 // Example: -annc 7:30PM
                 // ==========================================
+
                 if (baseCommand === 'annc') {
-                    const timeInput = args.join(' ').trim();
+
+                    const timeInput =
+                        args.join(' ').trim();
+
                     if (!timeInput) {
-                        return message.reply('❌ **Usage Error:** Provide a target launch time.\nExample: `-annc 7:30PM`');
+
+                        return message.reply(
+                            '❌ **Usage Error:** Provide a target launch time.\nExample: `-annc 7:30PM`'
+                        );
                     }
 
-                    // Look up active active tournament mapping configuration
-                    const tournament = await Tournament.findOne({
-                        guildId: message.guildId,
-                        isActive: true,
-                        status: 'complete'
-                    });
+                    // Look up active tournament mapping configuration
+                    const tournament =
+                        await Tournament.findOne({
+                            guildId:
+                                message.guildId,
+
+                            isActive:
+                                true,
+
+                            status:
+                                'complete'
+                        });
 
                     if (!tournament) {
-                        return message.reply('❌ No active completed tournament workspace currently found in this server.');
+
+                        return message.reply(
+                            '❌ No active completed tournament workspace currently found in this server.'
+                        );
                     }
 
                     // SEARCH FOR A MATCH ASSIGNED TO THIS SPECIFIC STADIUM CHANNEL
-                    let activeMatch = null;
-                    let activeMatchId = null;
 
-                    for (const [matchId, registryMatch] of tournament.matchRegistry.entries()) {
-                        const homeChan = extractChannel(registryMatch.home);
-                        const awayChan = extractChannel(registryMatch.away);
-                        
+                    let activeMatch =
+                        null;
+
+                    let activeMatchId =
+                        null;
+
+                    for (
+                        const [
+                            matchId,
+                            registryMatch
+                        ]
+                        of tournament.matchRegistry.entries()
+                    ) {
+
+                        const homeChan =
+                            extractChannel(
+                                registryMatch.home
+                            );
+
+                        const awayChan =
+                            extractChannel(
+                                registryMatch.away
+                            );
+
                         // Check if the current channel matches either home or away stadium configuration
-                        if (homeChan === `<#${message.channelId}>` || awayChan === `<#${message.channelId}>`) {
-                            activeMatch = registryMatch;
-                            activeMatchId = matchId;
+
+                        if (
+                            homeChan ===
+                                `<#${message.channelId}>` ||
+                            awayChan ===
+                                `<#${message.channelId}>`
+                        ) {
+
+                            activeMatch =
+                                registryMatch;
+
+                            activeMatchId =
+                                matchId;
+
                             break;
                         }
                     }
 
                     if (!activeMatch) {
-                        return message.reply('❌ **Error:** No match registry data is configured for this stadium channel.');
+
+                        return message.reply(
+                            '❌ **Error:** No match registry data is configured for this stadium channel.'
+                        );
                     }
 
-                    // PARSE TIME STRING (Assumes India Standard Time context per deadline parameters)
-                    const timeRegex = /^(\d{1,2}):(\d{2})\s*(AM|PM)\$/i;
-                    const matchTimeParts = timeInput.match(timeRegex);
+                    // PARSE TIME STRING
+                    // Assumes India Standard Time context per deadline parameters
+
+                    const timeRegex =
+                        /^(\d{1,2}):(\d{2})\s*(AM|PM)$/i;
+
+                    const matchTimeParts =
+                        timeInput.match(
+                            timeRegex
+                        );
 
                     if (!matchTimeParts) {
-                        return message.reply('❌ **Invalid Time Format!** Use `HH:MM AM/PM` configuration layout.\nExample: `-annc 7:30PM`');
+
+                        return message.reply(
+                            '❌ **Invalid Time Format!** Use `HH:MM AM/PM` configuration layout.\nExample: `-annc 7:30PM`'
+                        );
                     }
 
-                    let hours = parseInt(matchTimeParts[1], 10);
-                    const minutes = parseInt(matchTimeParts[2], 10);
-                    const ampm = matchTimeParts[3].toUpperCase();
+                    let hours =
+                        parseInt(
+                            matchTimeParts[1],
+                            10
+                        );
 
-                    if (ampm === 'PM' && hours < 12) hours += 12;
-                    if (amPM === 'AM' && hours === 12) hours = 0;
+                    const minutes =
+                        parseInt(
+                            matchTimeParts[2],
+                            10
+                        );
+
+                    const ampm =
+                        matchTimeParts[3]
+                            .toUpperCase();
+
+                    if (
+                        ampm === 'PM' &&
+                        hours < 12
+                    ) {
+                        hours += 12;
+                    }
+
+                    if (
+                        ampm === 'AM' &&
+                        hours === 12
+                    ) {
+                        hours = 0;
+                    }
 
                     // Form target processing timestamp date bound inside local server frame
-                    const now = new Date();
-                    const targetUnlockDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, 0);
+
+                    const now =
+                        new Date();
+
+                    const targetUnlockDate =
+                        new Date(
+                            now.getFullYear(),
+                            now.getMonth(),
+                            now.getDate(),
+                            hours,
+                            minutes,
+                            0
+                        );
 
                     // If user provides a time that has already passed today, assume they mean tomorrow
-                    if (targetUnlockDate <= now) {
-                        targetUnlockDate.setDate(targetUnlockDate.getDate() + 1);
+
+                    if (
+                        targetUnlockDate <=
+                        now
+                    ) {
+
+                        targetUnlockDate.setDate(
+                            targetUnlockDate.getDate() +
+                            1
+                        );
                     }
 
-                    const targetTimestamp = Math.floor(targetUnlockDate.getTime() / 1000);
+                    const targetTimestamp =
+                        Math.floor(
+                            targetUnlockDate.getTime() /
+                            1000
+                        );
 
-                    // LOCK CHANNEL PERMISSIONS IMMEDIATELY: Stop players from typing until kick-off
-                    await message.channel.permissionOverwrites.edit(message.guild.roles.everyone, {
-                        SendMessages: false
-                    }).catch(err => {
-                        console.error(err);
-                        return message.reply('❌ Failed to lock this channel. Ensure the bot has **Manage Channels** or **Manage Roles** permissions.');
-                    });
+                    // LOCK CHANNEL PERMISSIONS IMMEDIATELY
+
+                    await message.channel.permissionOverwrites
+                        .edit(
+                            message.guild.roles.everyone,
+                            {
+                                SendMessages:
+                                    false
+                            }
+                        )
+                        .catch(
+                            err => {
+
+                                console.error(
+                                    err
+                                );
+
+                                return message.reply(
+                                    '❌ Failed to lock this channel. Ensure the bot has **Manage Channels** or **Manage Roles** permissions.'
+                                );
+                            }
+                        );
 
                     // SAVE THE ACTION LOG TO THE DATABASE ARRAY
-                    if (!tournament.scheduledMatches) tournament.scheduledMatches = [];
-                    
-                    const homeRole = extractRole(activeMatch.home);
-                    const awayRole = extractRole(activeMatch.away);
+
+                    if (
+                        !tournament.scheduledMatches
+                    ) {
+                        tournament.scheduledMatches =
+                            [];
+                    }
+
+                    const homeRole =
+                        extractRole(
+                            activeMatch.home
+                        );
+
+                    const awayRole =
+                        extractRole(
+                            activeMatch.away
+                        );
 
                     tournament.scheduledMatches.push({
-                        matchId: activeMatchId,
-                        channelId: message.channelId,
-                        unlockAt: targetUnlockDate,
-                        homeRole: homeRole,
-                        awayRole: awayRole,
-                        triggered: false
+                        matchId:
+                            activeMatchId,
+
+                        channelId:
+                            message.channelId,
+
+                        unlockAt:
+                            targetUnlockDate,
+
+                        homeRole:
+                            homeRole,
+
+                        awayRole:
+                            awayRole,
+
+                        triggered:
+                            false
                     });
 
-                    tournament.markModified('scheduledMatches');
+                    tournament.markModified(
+                        'scheduledMatches'
+                    );
+
                     await tournament.save();
 
-                    // REMOVE ADMINISTRATIVE TRIGGER MESSAGE TO KEEP STADIUM VENUE LOOKING CLEAN
-                    await message.delete().catch(() => null);
+                    // REMOVE ADMINISTRATIVE TRIGGER MESSAGE
 
-                    // BROADCAST CUSTOMIZED LAUNCH PREVIEW PREPARATIONS CONTENT
+                    await message.delete()
+                        .catch(
+                            () => null
+                        );
+
+                    // BROADCAST CUSTOMIZED LAUNCH PREVIEW
+
                     return message.channel.send(
                         `## ${homeRole} **vs** ${awayRole}\n` +
                         `### Kick-off Time: <t:${targetTimestamp}:F>\n` +
                         `🔒 *Stadium Locked*`
                     );
                 }
-
 
                 // ==========================================
                 // 5. PANEL COMMAND
@@ -2221,9 +2750,9 @@ if (subCommand === 'reset') {
 
                         if (
                             repsInput !==
-                            'allowed' &&
+                                'allowed' &&
                             repsInput !==
-                            'not allowed'
+                                'not allowed'
                         ) {
 
                             return message.reply(
@@ -2387,7 +2916,7 @@ if (subCommand === 'reset') {
             if (
                 !activeSetup ||
                 activeSetup.status ===
-                'complete'
+                    'complete'
             ) {
 
                 return;
@@ -2397,7 +2926,6 @@ if (subCommand === 'reset') {
                 message.author.id !==
                 activeSetup.setupUser
             ) {
-
                 return;
             }
 
@@ -2752,7 +3280,7 @@ if (subCommand === 'reset') {
                             ) => {
 
                                 hiddenOutput +=
-                                    `${index + 1}. *Hidden*\n`;
+                                    `${index + 1}. 🔒 **Hidden**\n`;
                             }
                         );
 
@@ -2761,7 +3289,8 @@ if (subCommand === 'reset') {
                 );
 
                 hiddenOutput +=
-                    '🏆 **What is the tournament Format?** Type **UCL** or **Round Robin**.';
+                    '🎲 **Live Draws are ready!**\n\n' +
+                    'What is the tournament Format? Type **UCL** or **Round Robin**.';
 
                 return message.reply(
                     hiddenOutput
@@ -2778,11 +3307,13 @@ if (subCommand === 'reset') {
                 'setup_format'
             ) {
 
-                const chosenFormat =
+                const formatChoice =
                     rawInput.toLowerCase();
 
                 if (
-                    chosenFormat.includes(
+                    formatChoice ===
+                        'ucl' ||
+                    formatChoice.includes(
                         'ucl'
                     )
                 ) {
@@ -2796,16 +3327,18 @@ if (subCommand === 'reset') {
                     await activeSetup.save();
 
                     return message.reply(
-                        '🏆 **UCL Style Selected.**\n' +
-                        'How many matches should each team play? (This decides total matchdays)'
+                        '🏆 **UCL Format Selected.**\n' +
+                        'How many Matchdays would you like to schedule?'
                     );
                 }
 
                 if (
-                    chosenFormat.includes(
+                    formatChoice ===
+                        'round robin' ||
+                    formatChoice.includes(
                         'round'
-                    ) ||
-                    chosenFormat.includes(
+                    ) &&
+                    formatChoice.includes(
                         'robin'
                     )
                 ) {
@@ -3198,6 +3731,2390 @@ function getNumericMatchId(
             parts[
                 parts.length - 1
             ],
+            10
+        );
+
+    return isNaN(number)
+        ? 0
+        : number;
+}
+
+// ==========================================
+// FORMAT MATCH ID
+// ==========================================
+
+function formatMatchId(
+    matchId
+) {
+
+    const numericId =
+        getNumericMatchId(
+            matchId
+        );
+
+    return `Match ${numericId}`;
+}
+
+// ==========================================
+// FORMAT DATE
+// ==========================================
+
+function formatDate(
+    date
+) {
+
+    if (!date) {
+        return 'TBD';
+    }
+
+    const parsedDate =
+        new Date(
+            date
+        );
+
+    if (
+        isNaN(
+            parsedDate.getTime()
+        )
+    ) {
+
+        return 'TBD';
+    }
+
+    return parsedDate.toLocaleDateString(
+        'en-IN',
+        {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric'
+        }
+    );
+}
+
+// ==========================================
+// FORMAT TIME
+// ==========================================
+
+function formatTime(
+    date
+) {
+
+    if (!date) {
+        return 'TBD';
+    }
+
+    const parsedDate =
+        new Date(
+            date
+        );
+
+    if (
+        isNaN(
+            parsedDate.getTime()
+        )
+    ) {
+
+        return 'TBD';
+    }
+
+    return parsedDate.toLocaleTimeString(
+        'en-IN',
+        {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+        }
+    );
+}
+
+// ==========================================
+// FORMAT DATE + TIME
+// ==========================================
+
+function formatDateTime(
+    date
+) {
+
+    if (!date) {
+        return 'TBD';
+    }
+
+    return `${formatDate(date)} at ${formatTime(date)}`;
+}
+
+// ==========================================
+// SAFE NUMBER
+// ==========================================
+
+function safeNumber(
+    value,
+    fallback = 0
+) {
+
+    const number =
+        Number(
+            value
+        );
+
+    return Number.isFinite(
+        number
+    )
+        ? number
+        : fallback;
+}
+
+// ==========================================
+// SAFE INTEGER
+// ==========================================
+
+function safeInteger(
+    value,
+    fallback = 0
+) {
+
+    const number =
+        parseInt(
+            value,
+            10
+        );
+
+    return Number.isInteger(
+        number
+    )
+        ? number
+        : fallback;
+}
+
+// ==========================================
+// TEAM DISPLAY NAME
+// ==========================================
+
+function getTeamDisplayName(
+    teamString
+) {
+
+    if (!teamString) {
+        return 'TBD Team';
+    }
+
+    const roleMatch =
+        teamString.match(
+            /<@&(\d+)>/
+        );
+
+    if (
+        roleMatch &&
+        message.guild
+    ) {
+
+        const role =
+            message.guild.roles.cache.get(
+                roleMatch[1]
+            );
+
+        if (role) {
+            return role.name;
+        }
+    }
+
+    return teamString
+        .replace(
+            /<@&\d+>/g,
+            ''
+        )
+        .replace(
+            /[()]/g,
+            ''
+        )
+        .trim() ||
+        'TBD Team';
+}
+
+// ==========================================
+// GET GROUP LETTER
+// ==========================================
+
+function getGroupLetter(
+    index
+) {
+
+    const alphabet =
+        'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+    return alphabet[
+        index
+    ] || '?';
+}
+
+// ==========================================
+// GET TEAM GROUP
+// ==========================================
+
+function getTeamGroup(
+    teamName,
+    groups
+) {
+
+    if (
+        !groups ||
+        typeof groups !== 'object'
+    ) {
+
+        return null;
+    }
+
+    for (
+        const [
+            group,
+            teams
+        ] of Object.entries(
+            groups
+        )
+    ) {
+
+        if (
+            Array.isArray(
+                teams
+            ) &&
+            teams.includes(
+                teamName
+            )
+        ) {
+
+            return group;
+        }
+    }
+
+    return null;
+}
+
+// ==========================================
+// FIND FIXTURE
+// ==========================================
+
+function findFixture(
+    fixtures,
+    matchId
+) {
+
+    if (
+        !Array.isArray(
+            fixtures
+        )
+    ) {
+
+        return null;
+    }
+
+    return fixtures.find(
+        fixture =>
+            String(
+                fixture.matchId
+            ) ===
+            String(
+                matchId
+            )
+    ) || null;
+}
+
+// ==========================================
+// FIND MATCH BY NUMERIC ID
+// ==========================================
+
+function findMatchByNumericId(
+    fixtures,
+    numericId
+) {
+
+    if (
+        !Array.isArray(
+            fixtures
+        )
+    ) {
+
+        return null;
+    }
+
+    const target =
+        safeInteger(
+            numericId,
+            -1
+        );
+
+    return fixtures.find(
+        fixture =>
+            getNumericMatchId(
+                fixture.matchId
+            ) === target
+    ) || null;
+}
+
+// ==========================================
+// MATCHDAY FIXTURES
+// ==========================================
+
+function getMatchdayFixtures(
+    fixtures,
+    matchday
+) {
+
+    if (
+        !Array.isArray(
+            fixtures
+        )
+    ) {
+
+        return [];
+    }
+
+    const target =
+        safeInteger(
+            matchday,
+            -1
+        );
+
+    return fixtures.filter(
+        fixture =>
+            safeInteger(
+                fixture.matchday,
+                -1
+            ) === target
+    );
+}
+
+// ==========================================
+// GROUP FIXTURES
+// ==========================================
+
+function getGroupFixtures(
+    fixtures,
+    group
+) {
+
+    if (
+        !Array.isArray(
+            fixtures
+        )
+    ) {
+
+        return [];
+    }
+
+    const target =
+        String(
+            group
+        ).toLowerCase();
+
+    return fixtures.filter(
+        fixture =>
+            String(
+                fixture.group
+            ).toLowerCase() ===
+            target
+    );
+}
+
+// ==========================================
+// TEAM FIXTURES
+// ==========================================
+
+function getTeamFixtures(
+    fixtures,
+    team
+) {
+
+    if (
+        !Array.isArray(
+            fixtures
+        )
+    ) {
+
+        return [];
+    }
+
+    const target =
+        String(
+            team
+        ).toLowerCase();
+
+    return fixtures.filter(
+        fixture => {
+
+            const home =
+                String(
+                    fixture.homeTeam ||
+                    fixture.home ||
+                    ''
+                ).toLowerCase();
+
+            const away =
+                String(
+                    fixture.awayTeam ||
+                    fixture.away ||
+                    ''
+                ).toLowerCase();
+
+            return (
+                home === target ||
+                away === target
+            );
+        }
+    );
+}
+
+// ==========================================
+// FIXTURE STATUS
+// ==========================================
+
+function getFixtureStatus(
+    fixture
+) {
+
+    if (!fixture) {
+        return 'unknown';
+    }
+
+    if (
+        fixture.completed ===
+        true
+    ) {
+
+        return 'completed';
+    }
+
+    if (
+        fixture.status
+    ) {
+
+        return String(
+            fixture.status
+        ).toLowerCase();
+    }
+
+    if (
+        fixture.result
+    ) {
+
+        return 'completed';
+    }
+
+    return 'scheduled';
+}
+
+// ==========================================
+// MATCH LABEL
+// ==========================================
+
+function getMatchLabel(
+    fixture
+) {
+
+    if (!fixture) {
+        return 'Match';
+    }
+
+    const matchNumber =
+        getNumericMatchId(
+            fixture.matchId
+        );
+
+    return `Match ${matchNumber}`;
+}
+
+// ==========================================
+// TEAM MENTION
+// ==========================================
+
+function getTeamMention(
+    teamString
+) {
+
+    const roleMatch =
+        String(
+            teamString ||
+            ''
+        ).match(
+            /<@&\d+>/
+        );
+
+    return roleMatch
+        ? roleMatch[0]
+        : String(
+            teamString ||
+            'TBD Team'
+        );
+}
+
+// ==========================================
+// STADIUM DISPLAY
+// ==========================================
+
+function getStadiumDisplay(
+    fixture
+) {
+
+    if (!fixture) {
+        return 'TBD Stadium';
+    }
+
+    return (
+        fixture.stadium ||
+        fixture.venue ||
+        'TBD Stadium'
+    );
+}
+
+// ==========================================
+// FIXTURE DATE DISPLAY
+// ==========================================
+
+function getFixtureDateDisplay(
+    fixture
+) {
+
+    if (!fixture) {
+        return 'TBD';
+    }
+
+    return formatDateTime(
+        fixture.scheduledAt ||
+        fixture.date ||
+        fixture.time
+    );
+}
+
+// ==========================================
+// SORT FIXTURES
+// ==========================================
+
+function sortFixtures(
+    fixtures
+) {
+
+    if (
+        !Array.isArray(
+            fixtures
+        )
+    ) {
+
+        return [];
+    }
+
+    return [
+        ...fixtures
+    ].sort(
+        (
+            first,
+            second
+        ) => {
+
+            const firstMatchday =
+                safeInteger(
+                    first.matchday,
+                    0
+                );
+
+            const secondMatchday =
+                safeInteger(
+                    second.matchday,
+                    0
+                );
+
+            if (
+                firstMatchday !==
+                secondMatchday
+            ) {
+
+                return (
+                    firstMatchday -
+                    secondMatchday
+                );
+            }
+
+            return (
+                getNumericMatchId(
+                    first.matchId
+                ) -
+                getNumericMatchId(
+                    second.matchId
+                )
+            );
+        }
+    );
+}
+
+// ==========================================
+// BUILD FIXTURE TITLE
+// ==========================================
+
+function buildFixtureTitle(
+    fixture
+) {
+
+    if (!fixture) {
+        return '⚽ Match';
+    }
+
+    const home =
+        getTeamDisplayName(
+            fixture.homeTeam ||
+            fixture.home
+        );
+
+    const away =
+        getTeamDisplayName(
+            fixture.awayTeam ||
+            fixture.away
+        );
+
+    return `${home} vs ${away}`;
+}
+
+// ==========================================
+// BUILD FIXTURE DESCRIPTION
+// ==========================================
+
+function buildFixtureDescription(
+    fixture
+) {
+
+    if (!fixture) {
+        return 'No fixture information available.';
+    }
+
+    const lines =
+        [];
+
+    lines.push(
+        `📅 **Date:** ${getFixtureDateDisplay(fixture)}`
+    );
+
+    lines.push(
+        `🏟️ **Stadium:** ${getStadiumDisplay(fixture)}`
+    );
+
+    if (
+        fixture.group
+    ) {
+
+        lines.push(
+            `📊 **Group:** ${String(fixture.group).toUpperCase()}`
+        );
+    }
+
+    if (
+        fixture.matchday
+    ) {
+
+        lines.push(
+            `🗓️ **Matchday:** ${fixture.matchday}`
+        );
+    }
+
+    lines.push(
+        `📌 **Status:** ${capitalize(getFixtureStatus(fixture))}`
+    );
+
+    return lines.join(
+        '\n'
+    );
+}
+
+// ==========================================
+// BUILD MATCH EMBED
+// ==========================================
+
+function buildMatchEmbed(
+    fixture
+) {
+
+    return new EmbedBuilder()
+        .setTitle(
+            buildFixtureTitle(
+                fixture
+            )
+        )
+        .setDescription(
+            buildFixtureDescription(
+                fixture
+            )
+        )
+        .setColor(
+            '#3498DB'
+        );
+}
+
+// ==========================================
+// BUILD MATCHDAY EMBED
+// ==========================================
+
+function buildMatchdayEmbed(
+    fixtures,
+    matchday
+) {
+
+    const sortedFixtures =
+        sortFixtures(
+            fixtures
+        );
+
+    const description =
+        sortedFixtures.length > 0
+            ? sortedFixtures
+                .map(
+                    fixture =>
+                        `**${getMatchLabel(fixture)}** — ` +
+                        `${getTeamDisplayName(fixture.homeTeam || fixture.home)} ` +
+                        `vs ` +
+                        `${getTeamDisplayName(fixture.awayTeam || fixture.away)}`
+                )
+                .join(
+                    '\n'
+                )
+            : 'No fixtures found.';
+
+    return new EmbedBuilder()
+        .setTitle(
+            `📅 Matchday ${matchday}`
+        )
+        .setDescription(
+            description
+        )
+        .setColor(
+            '#2ECC71'
+        );
+}
+
+// ==========================================
+// BUILD GROUP EMBED
+// ==========================================
+
+function buildGroupEmbed(
+    group,
+    teams
+) {
+
+    const teamList =
+        Array.isArray(
+            teams
+        ) &&
+        teams.length > 0
+            ? teams
+                .map(
+                    (
+                        team,
+                        index
+                    ) =>
+                        `${index + 1}. **${getTeamDisplayName(team)}**`
+                )
+                .join(
+                    '\n'
+                )
+            : 'No teams available.';
+
+    return new EmbedBuilder()
+        .setTitle(
+            `📊 Group ${String(group).toUpperCase()}`
+        )
+        .setDescription(
+            teamList
+        )
+        .setColor(
+            '#9B59B6'
+        );
+}
+
+// ==========================================
+// BUILD TOURNAMENT EMBED
+// ==========================================
+
+function buildTournamentEmbed(
+    tournament
+) {
+
+    if (!tournament) {
+        return null;
+    }
+
+    const fields =
+        [];
+
+    fields.push({
+        name:
+            '🏆 Tournament',
+        value:
+            tournament.name ||
+            'Unnamed Tournament',
+        inline:
+            false
+    });
+
+    fields.push({
+        name:
+            '👥 Teams',
+        value:
+            String(
+                tournament.teamsCount ||
+                tournament.teamNames?.length ||
+                0
+            ),
+        inline:
+            true
+    });
+
+    fields.push({
+        name:
+            '📊 Groups',
+        value:
+            String(
+                tournament.groupsCount ||
+                0
+            ),
+        inline:
+            true
+    });
+
+    fields.push({
+        name:
+            '🎯 Format',
+        value:
+            tournament.format ||
+            'Not set',
+        inline:
+            true
+    });
+
+    fields.push({
+        name:
+            '🗓️ Matchdays',
+        value:
+            String(
+                tournament.totalMatchdays ||
+                0
+            ),
+        inline:
+            true
+    });
+
+    fields.push({
+        name:
+            '📌 Status',
+        value:
+            tournament.isActive
+                ? 'Active'
+                : 'Inactive',
+        inline:
+            true
+    });
+
+    return new EmbedBuilder()
+        .setTitle(
+            `🏆 ${tournament.name || 'Tournament'}`
+        )
+        .addFields(
+            fields
+        )
+        .setColor(
+            '#F1C40F'
+        );
+}
+
+// ==========================================
+// TOURNAMENT SUMMARY
+// ==========================================
+
+function buildTournamentSummary(
+    tournament
+) {
+
+    if (!tournament) {
+        return 'No tournament found.';
+    }
+
+    return [
+        `🏆 **${tournament.name || 'Unnamed Tournament'}**`,
+        `👥 Teams: **${tournament.teamsCount || 0}**`,
+        `📊 Groups: **${tournament.groupsCount || 0}**`,
+        `🎯 Format: **${tournament.format || 'Not set'}**`,
+        `🗓️ Matchdays: **${tournament.totalMatchdays || 0}**`,
+        `📌 Status: **${tournament.isActive ? 'Active' : 'Inactive'}**`
+    ].join(
+        '\n'
+    );
+}
+
+// ==========================================
+// CREATE MATCH ROW
+// ==========================================
+
+function createMatchRow(
+    fixture
+) {
+
+    return {
+        matchId:
+            fixture?.matchId ||
+            null,
+        matchday:
+            fixture?.matchday ||
+            null,
+        group:
+            fixture?.group ||
+            null,
+        homeTeam:
+            fixture?.homeTeam ||
+            fixture?.home ||
+            null,
+        awayTeam:
+            fixture?.awayTeam ||
+            fixture?.away ||
+            null,
+        stadium:
+            fixture?.stadium ||
+            fixture?.venue ||
+            null,
+        scheduledAt:
+            fixture?.scheduledAt ||
+            fixture?.date ||
+            fixture?.time ||
+            null,
+        status:
+            getFixtureStatus(
+                fixture
+            )
+    };
+}
+
+// ==========================================
+// NORMALIZE FIXTURE
+// ==========================================
+
+function normalizeFixture(
+    fixture
+) {
+
+    if (!fixture) {
+        return null;
+    }
+
+    return {
+        ...fixture,
+        matchId:
+            fixture.matchId ||
+            fixture.id ||
+            null,
+        homeTeam:
+            fixture.homeTeam ||
+            fixture.home ||
+            null,
+        awayTeam:
+            fixture.awayTeam ||
+            fixture.away ||
+            null,
+        stadium:
+            fixture.stadium ||
+            fixture.venue ||
+            null,
+        scheduledAt:
+            fixture.scheduledAt ||
+            fixture.date ||
+            fixture.time ||
+            null
+    };
+}
+
+// ==========================================
+// NORMALIZE FIXTURES
+// ==========================================
+
+function normalizeFixtures(
+    fixtures
+) {
+
+    if (
+        !Array.isArray(
+            fixtures
+        )
+    ) {
+
+        return [];
+    }
+
+    return fixtures
+        .map(
+            normalizeFixture
+        )
+        .filter(
+            Boolean
+        );
+}
+
+// ==========================================
+// MATCHDAY NUMBERS
+// ==========================================
+
+function getMatchdayNumbers(
+    fixtures
+) {
+
+    const numbers =
+        new Set();
+
+    normalizeFixtures(
+        fixtures
+    ).forEach(
+        fixture => {
+
+            if (
+                fixture.matchday !==
+                undefined &&
+                fixture.matchday !==
+                null
+            ) {
+
+                numbers.add(
+                    safeInteger(
+                        fixture.matchday
+                    )
+                );
+            }
+        }
+    );
+
+    return [
+        ...numbers
+    ].sort(
+        (
+            first,
+            second
+        ) =>
+            first -
+            second
+    );
+}
+
+// ==========================================
+// GROUP LETTERS
+// ==========================================
+
+function getGroupLetters(
+    groups
+) {
+
+    if (
+        !groups ||
+        typeof groups !== 'object'
+    ) {
+
+        return [];
+    }
+
+    return Object.keys(
+        groups
+    ).sort();
+}
+
+// ==========================================
+// GET ALL TEAMS
+// ==========================================
+
+function getAllTeams(
+    tournament
+) {
+
+    if (!tournament) {
+        return [];
+    }
+
+    if (
+        Array.isArray(
+            tournament.teamNames
+        )
+    ) {
+
+        return [
+            ...tournament.teamNames
+        ];
+    }
+
+    const teams =
+        [];
+
+    if (
+        tournament.drawGroups &&
+        typeof tournament.drawGroups ===
+            'object'
+    ) {
+
+        Object.values(
+            tournament.drawGroups
+        ).forEach(
+            groupTeams => {
+
+                if (
+                    Array.isArray(
+                        groupTeams
+                    )
+                ) {
+
+                    teams.push(
+                        ...groupTeams
+                    );
+                }
+            }
+        );
+    }
+
+    return teams;
+}
+
+// ==========================================
+// TEAM INDEX
+// ==========================================
+
+function getTeamIndex(
+    tournament,
+    teamName
+) {
+
+    const teams =
+        getAllTeams(
+            tournament
+        );
+
+    return teams.findIndex(
+        team =>
+            String(
+                team
+            ) ===
+            String(
+                teamName
+            )
+    );
+}
+
+// ==========================================
+// GROUP TEAM COUNT
+// ==========================================
+
+function getGroupTeamCount(
+    tournament,
+    group
+) {
+
+    if (
+        !tournament ||
+        !tournament.drawGroups
+    ) {
+
+        return 0;
+    }
+
+    const teams =
+        tournament.drawGroups[
+            group
+        ];
+
+    return Array.isArray(
+        teams
+    )
+        ? teams.length
+        : 0;
+}
+
+// ==========================================
+// DRAW REVEAL COUNT
+// ==========================================
+
+function getDrawRevealCount(
+    tournament,
+    group
+) {
+
+    if (
+        !tournament ||
+        !tournament.drawRevealState
+    ) {
+
+        return 0;
+    }
+
+    return safeInteger(
+        tournament.drawRevealState[
+            group
+        ],
+        0
+    );
+}
+
+// ==========================================
+// IS DRAW COMPLETE
+// ==========================================
+
+function isDrawComplete(
+    tournament
+) {
+
+    if (
+        !tournament ||
+        !tournament.drawGroups
+    ) {
+
+        return true;
+    }
+
+    return Object.keys(
+        tournament.drawGroups
+    ).every(
+        group => {
+
+            const total =
+                getGroupTeamCount(
+                    tournament,
+                    group
+                );
+
+            const revealed =
+                getDrawRevealCount(
+                    tournament,
+                    group
+                );
+
+            return (
+                revealed >=
+                total
+            );
+        }
+    );
+}
+
+// ==========================================
+// GET HIDDEN DRAW DISPLAY
+// ==========================================
+
+function getHiddenDrawDisplay(
+    tournament,
+    group
+) {
+
+    const teams =
+        tournament?.drawGroups?.[
+            group
+        ] || [];
+
+    const revealed =
+        getDrawRevealCount(
+            tournament,
+            group
+        );
+
+    return teams.map(
+        (
+            team,
+            index
+        ) => {
+
+            if (
+                index <
+                revealed
+            ) {
+
+                return `**${index + 1}. ${getTeamDisplayName(team)}**`;
+            }
+
+            return `**${index + 1}. 🔒 Hidden**`;
+        }
+    );
+}
+
+// ==========================================
+// BUILD DRAW OUTPUT
+// ==========================================
+
+function buildDrawOutput(
+    tournament
+) {
+
+    if (
+        !tournament ||
+        !tournament.drawGroups
+    ) {
+
+        return '❌ No draw information is available.';
+    }
+
+    let output =
+        '🎲 **Tournament Draw**\n\n';
+
+    Object.keys(
+        tournament.drawGroups
+    ).forEach(
+        group => {
+
+            output +=
+                `## Group ${String(group).toUpperCase()}\n`;
+
+            const display =
+                getHiddenDrawDisplay(
+                    tournament,
+                    group
+                );
+
+            if (
+                display.length ===
+                0
+            ) {
+
+                output +=
+                    'No teams.\n\n';
+
+                return;
+            }
+
+            output +=
+                display.join(
+                    '\n'
+                ) +
+                '\n\n';
+        }
+    );
+
+    return output.trim();
+}
+
+// ==========================================
+// BUILD REVEAL OUTPUT
+// ==========================================
+
+function buildRevealOutput(
+    tournament,
+    group,
+    team
+) {
+
+    const groupName =
+        String(
+            group
+        ).toUpperCase();
+
+    return [
+        `🎲 **Group ${groupName} Draw**`,
+        '',
+        `🔓 **Revealed:** ${getTeamDisplayName(team)}`,
+        '',
+        `Use **\`-draw ${groupName}\`** to reveal the next team.`
+    ].join(
+        '\n'
+    );
+}
+
+// ==========================================
+// VALIDATE GROUP
+// ==========================================
+
+function isValidGroup(
+    tournament,
+    group
+) {
+
+    if (
+        !tournament ||
+        !tournament.drawGroups
+    ) {
+
+        return false;
+    }
+
+    return Object.prototype.hasOwnProperty.call(
+        tournament.drawGroups,
+        group
+    );
+}
+
+// ==========================================
+// NEXT TEAM TO REVEAL
+// ==========================================
+
+function getNextTeamToReveal(
+    tournament,
+    group
+) {
+
+    if (
+        !isValidGroup(
+            tournament,
+            group
+        )
+    ) {
+
+        return null;
+    }
+
+    const teams =
+        tournament.drawGroups[
+            group
+        ] || [];
+
+    const revealed =
+        getDrawRevealCount(
+            tournament,
+            group
+        );
+
+    if (
+        revealed >=
+        teams.length
+    ) {
+
+        return null;
+    }
+
+    return teams[
+        revealed
+    ];
+}
+
+// ==========================================
+// INCREMENT DRAW REVEAL
+// ==========================================
+
+function incrementDrawReveal(
+    tournament,
+    group
+) {
+
+    if (
+        !isValidGroup(
+            tournament,
+            group
+        )
+    ) {
+
+        return false;
+    }
+
+    if (
+        !tournament.drawRevealState
+    ) {
+
+        tournament.drawRevealState =
+            {};
+    }
+
+    const current =
+        getDrawRevealCount(
+            tournament,
+            group
+        );
+
+    const total =
+        getGroupTeamCount(
+            tournament,
+            group
+        );
+
+    if (
+        current >=
+        total
+    ) {
+
+        return false;
+    }
+
+    tournament.drawRevealState[
+        group
+    ] =
+        current + 1;
+
+    return true;
+}
+
+// ==========================================
+// BUILD GROUP TABLE
+// ==========================================
+
+function buildGroupTable(
+    tournament,
+    group
+) {
+
+    const teams =
+        tournament?.drawGroups?.[
+            group
+        ] || [];
+
+    if (
+        teams.length ===
+        0
+    ) {
+
+        return 'No teams in this group.';
+    }
+
+    const rows =
+        teams.map(
+            (
+                team,
+                index
+            ) =>
+                `${index + 1}. ${getTeamDisplayName(team)}`
+        );
+
+    return rows.join(
+        '\n'
+    );
+}
+
+// ==========================================
+// BUILD FIXTURE LIST
+// ==========================================
+
+function buildFixtureList(
+    fixtures
+) {
+
+    const normalized =
+        normalizeFixtures(
+            fixtures
+        );
+
+    if (
+        normalized.length ===
+        0
+    ) {
+
+        return 'No fixtures found.';
+    }
+
+    return sortFixtures(
+        normalized
+    )
+        .map(
+            fixture =>
+                `**${getMatchLabel(fixture)}** — ` +
+                `${getTeamDisplayName(fixture.homeTeam)} ` +
+                `vs ` +
+                `${getTeamDisplayName(fixture.awayTeam)}`
+        )
+        .join(
+            '\n'
+        );
+}
+
+// ==========================================
+// BUILD FIXTURE DETAILS
+// ==========================================
+
+function buildFixtureDetails(
+    fixture
+) {
+
+    const normalized =
+        normalizeFixture(
+            fixture
+        );
+
+    if (!normalized) {
+        return 'No fixture found.';
+    }
+
+    return [
+        `🏆 **${getMatchLabel(normalized)}**`,
+        `⚔️ **${getTeamDisplayName(normalized.homeTeam)} vs ${getTeamDisplayName(normalized.awayTeam)}**`,
+        `📊 Group: **${normalized.group ? String(normalized.group).toUpperCase() : 'N/A'}**`,
+        `🗓️ Matchday: **${normalized.matchday ?? 'N/A'}**`,
+        `🏟️ Stadium: **${getStadiumDisplay(normalized)}**`,
+        `📅 Scheduled: **${getFixtureDateDisplay(normalized)}**`,
+        `📌 Status: **${capitalize(getFixtureStatus(normalized))}**`
+    ].join(
+        '\n'
+    );
+}
+
+// ==========================================
+// TOURNAMENT FIXTURE COUNT
+// ==========================================
+
+function getTournamentFixtureCount(
+    tournament
+) {
+
+    if (!tournament) {
+        return 0;
+    }
+
+    return Array.isArray(
+        tournament.fixtures
+    )
+        ? tournament.fixtures.length
+        : 0;
+}
+
+// ==========================================
+// TOURNAMENT COMPLETED COUNT
+// ==========================================
+
+function getTournamentCompletedCount(
+    tournament
+) {
+
+    if (!tournament) {
+        return 0;
+    }
+
+    const fixtures =
+        normalizeFixtures(
+            tournament.fixtures
+        );
+
+    return fixtures.filter(
+        fixture =>
+            getFixtureStatus(
+                fixture
+            ) ===
+            'completed'
+    ).length;
+}
+
+// ==========================================
+// TOURNAMENT PENDING COUNT
+// ==========================================
+
+function getTournamentPendingCount(
+    tournament
+) {
+
+    return Math.max(
+        0,
+        getTournamentFixtureCount(
+            tournament
+        ) -
+        getTournamentCompletedCount(
+            tournament
+        )
+    );
+}
+
+// ==========================================
+// TOURNAMENT PROGRESS
+// ==========================================
+
+function getTournamentProgress(
+    tournament
+) {
+
+    const total =
+        getTournamentFixtureCount(
+            tournament
+        );
+
+    const completed =
+        getTournamentCompletedCount(
+            tournament
+        );
+
+    if (
+        total ===
+        0
+    ) {
+
+        return 0;
+    }
+
+    return Math.round(
+        (
+            completed /
+            total
+        ) *
+        100
+    );
+}
+
+// ==========================================
+// PROGRESS BAR
+// ==========================================
+
+function buildProgressBar(
+    percentage,
+    length = 10
+) {
+
+    const safePercentage =
+        Math.max(
+            0,
+            Math.min(
+                100,
+                safeNumber(
+                    percentage,
+                    0
+                )
+            )
+        );
+
+    const filled =
+        Math.round(
+            (
+                safePercentage /
+                100
+            ) *
+            length
+        );
+
+    const empty =
+        Math.max(
+            0,
+            length -
+            filled
+        );
+
+    return (
+        '█'.repeat(
+            filled
+        ) +
+        '░'.repeat(
+            empty
+        )
+    );
+}
+
+// ==========================================
+// TOURNAMENT PROGRESS DISPLAY
+// ==========================================
+
+function buildTournamentProgress(
+    tournament
+) {
+
+    const progress =
+        getTournamentProgress(
+            tournament
+        );
+
+    return [
+        `📈 **Tournament Progress:** ${progress}%`,
+        `\`${buildProgressBar(progress)}\``
+    ].join(
+        '\n'
+    );
+}
+
+// ==========================================
+// FIXTURE MATCH STATUS DISPLAY
+// ==========================================
+
+function buildStatusDisplay(
+    fixture
+) {
+
+    const status =
+        getFixtureStatus(
+            fixture
+        );
+
+    switch (
+        status
+    ) {
+
+        case 'completed':
+            return '✅ Completed';
+
+        case 'scheduled':
+            return '🕒 Scheduled';
+
+        case 'reserved':
+            return '📌 Reserved';
+
+        case 'cancelled':
+            return '❌ Cancelled';
+
+        default:
+            return `📍 ${capitalize(status)}`;
+    }
+}
+
+// ==========================================
+// RESERVATION STATUS
+// ==========================================
+
+function isFixtureReserved(
+    fixture
+) {
+
+    if (!fixture) {
+        return false;
+    }
+
+    return (
+        fixture.reserved ===
+        true ||
+        fixture.status ===
+        'reserved'
+    );
+}
+
+// ==========================================
+// COMPLETION CHECK
+// ==========================================
+
+function isFixtureCompleted(
+    fixture
+) {
+
+    if (!fixture) {
+        return false;
+    }
+
+    return (
+        fixture.completed ===
+        true ||
+        fixture.status ===
+        'completed'
+    );
+}
+
+// ==========================================
+// CANCEL CHECK
+// ==========================================
+
+function isFixtureCancelled(
+    fixture
+) {
+
+    if (!fixture) {
+        return false;
+    }
+
+    return (
+        fixture.cancelled ===
+        true ||
+        fixture.status ===
+        'cancelled'
+    );
+}
+
+// ==========================================
+// AVAILABLE FIXTURE CHECK
+// ==========================================
+
+function isFixtureAvailable(
+    fixture
+) {
+
+    if (!fixture) {
+        return false;
+    }
+
+    return !(
+        isFixtureReserved(
+            fixture
+        ) ||
+        isFixtureCompleted(
+            fixture
+        ) ||
+        isFixtureCancelled(
+            fixture
+        )
+    );
+}
+
+// ==========================================
+// GET HOME TEAM
+// ==========================================
+
+function getHomeTeam(
+    fixture
+) {
+
+    return (
+        fixture?.homeTeam ||
+        fixture?.home ||
+        'TBD Team'
+    );
+}
+
+// ==========================================
+// GET AWAY TEAM
+// ==========================================
+
+function getAwayTeam(
+    fixture
+) {
+
+    return (
+        fixture?.awayTeam ||
+        fixture?.away ||
+        'TBD Team'
+    );
+}
+
+// ==========================================
+// GET MATCH STADIUM
+// ==========================================
+
+function getMatchStadium(
+    fixture
+) {
+
+    return (
+        fixture?.stadium ||
+        fixture?.venue ||
+        'TBD Stadium'
+    );
+}
+
+// ==========================================
+// GET MATCH GROUP
+// ==========================================
+
+function getMatchGroup(
+    fixture
+) {
+
+    return (
+        fixture?.group ||
+        null
+    );
+}
+
+// ==========================================
+// GET MATCHDAY
+// ==========================================
+
+function getMatchday(
+    fixture
+) {
+
+    return safeInteger(
+        fixture?.matchday,
+        0
+    );
+}
+
+// ==========================================
+// GET SCHEDULED DATE
+// ==========================================
+
+function getScheduledDate(
+    fixture
+) {
+
+    return (
+        fixture?.scheduledAt ||
+        fixture?.date ||
+        fixture?.time ||
+        null
+    );
+}
+
+// ==========================================
+// FIXTURE SEARCH
+// ==========================================
+
+function searchFixtures(
+    fixtures,
+    searchTerm
+) {
+
+    const normalizedTerm =
+        String(
+            searchTerm ||
+            ''
+        )
+            .trim()
+            .toLowerCase();
+
+    if (
+        !normalizedTerm
+    ) {
+
+        return [];
+    }
+
+    return normalizeFixtures(
+        fixtures
+    ).filter(
+        fixture => {
+
+            const searchable =
+                [
+                    fixture.matchId,
+                    fixture.homeTeam,
+                    fixture.awayTeam,
+                    fixture.group,
+                    fixture.stadium,
+                    fixture.status
+                ]
+                    .map(
+                        value =>
+                            String(
+                                value ||
+                                ''
+                            ).toLowerCase()
+                    )
+                    .join(
+                        ' '
+                    );
+
+            return searchable.includes(
+                normalizedTerm
+            );
+        }
+    );
+}
+
+// ==========================================
+// UNIQUE VALUES
+// ==========================================
+
+function uniqueValues(
+    values
+) {
+
+    return [
+        ...new Set(
+            values
+        )
+    ];
+}
+
+// ==========================================
+// TEAM NAMES FROM FIXTURES
+// ==========================================
+
+function getFixtureTeams(
+    fixtures
+) {
+
+    const teams =
+        [];
+
+    normalizeFixtures(
+        fixtures
+    ).forEach(
+        fixture => {
+
+            if (
+                fixture.homeTeam
+            ) {
+
+                teams.push(
+                    fixture.homeTeam
+                );
+            }
+
+            if (
+                fixture.awayTeam
+            ) {
+
+                teams.push(
+                    fixture.awayTeam
+                );
+            }
+        }
+    );
+
+    return uniqueValues(
+        teams
+    );
+}
+
+// ==========================================
+// GROUPS FROM FIXTURES
+// ==========================================
+
+function getFixtureGroups(
+    fixtures
+) {
+
+    const groups =
+        [];
+
+    normalizeFixtures(
+        fixtures
+    ).forEach(
+        fixture => {
+
+            if (
+                fixture.group
+            ) {
+
+                groups.push(
+                    fixture.group
+                );
+            }
+        }
+    );
+
+    return uniqueValues(
+        groups
+    );
+}
+
+// ==========================================
+// STADIUMS FROM FIXTURES
+// ==========================================
+
+function getFixtureStadiums(
+    fixtures
+) {
+
+    const stadiums =
+        [];
+
+    normalizeFixtures(
+        fixtures
+    ).forEach(
+        fixture => {
+
+            if (
+                fixture.stadium
+            ) {
+
+                stadiums.push(
+                    fixture.stadium
+                );
+            }
+        }
+    );
+
+    return uniqueValues(
+        stadiums
+    );
+}
+
+// ==========================================
+// MATCHDAY SUMMARY
+// ==========================================
+
+function buildMatchdaySummary(
+    fixtures,
+    matchday
+) {
+
+    const matchdayFixtures =
+        getMatchdayFixtures(
+            fixtures,
+            matchday
+        );
+
+    const total =
+        matchdayFixtures.length;
+
+    const completed =
+        matchdayFixtures.filter(
+            isFixtureCompleted
+        ).length;
+
+    const pending =
+        total -
+        completed;
+
+    return [
+        `🗓️ **Matchday ${matchday} Summary**`,
+        `⚽ Total Matches: **${total}**`,
+        `✅ Completed: **${completed}**`,
+        `🕒 Pending: **${pending}**`
+    ].join(
+        '\n'
+    );
+}
+
+// ==========================================
+// GROUP SUMMARY
+// ==========================================
+
+function buildGroupSummary(
+    tournament,
+    group
+) {
+
+    const teams =
+        tournament?.drawGroups?.[
+            group
+        ] || [];
+
+    const fixtures =
+        getGroupFixtures(
+            tournament?.fixtures,
+            group
+        );
+
+    const completed =
+        fixtures.filter(
+            isFixtureCompleted
+        ).length;
+
+    return [
+        `📊 **Group ${String(group).toUpperCase()} Summary**`,
+        `👥 Teams: **${teams.length}**`,
+        `⚽ Fixtures: **${fixtures.length}**`,
+        `✅ Completed: **${completed}**`,
+        `🕒 Pending: **${fixtures.length - completed}**`
+    ].join(
+        '\n'
+    );
+}
+
+// ==========================================
+// TEAM SUMMARY
+// ==========================================
+
+function buildTeamSummary(
+    tournament,
+    team
+) {
+
+    const fixtures =
+        getTeamFixtures(
+            tournament?.fixtures,
+            team
+        );
+
+    const completed =
+        fixtures.filter(
+            isFixtureCompleted
+        ).length;
+
+    return [
+        `👕 **${getTeamDisplayName(team)}**`,
+        `⚽ Matches: **${fixtures.length}**`,
+        `✅ Completed: **${completed}**`,
+        `🕒 Pending: **${fixtures.length - completed}**`
+    ].join(
+        '\n'
+    );
+}
+
+// ==========================================
+// TOURNAMENT ACTIVE CHECK
+// ==========================================
+
+function isTournamentActive(
+    tournament
+) {
+
+    return Boolean(
+        tournament &&
+        tournament.isActive ===
+            true
+    );
+}
+
+// ==========================================
+// TOURNAMENT COMPLETE CHECK
+// ==========================================
+
+function isTournamentComplete(
+    tournament
+) {
+
+    if (!tournament) {
+        return false;
+    }
+
+    return (
+        tournament.status ===
+            'complete' ||
+        (
+            getTournamentFixtureCount(
+                tournament
+            ) > 0 &&
+            getTournamentPendingCount(
+                tournament
+            ) === 0
+        )
+    );
+}
+
+// ==========================================
+// TOURNAMENT FORMAT DISPLAY
+// ==========================================
+
+function getFormatDisplay(
+    format
+) {
+
+    switch (
+        String(
+            format ||
+            ''
+        ).toLowerCase()
+    ) {
+
+        case 'ucl':
+            return '🏆 UCL';
+
+        case 'round_robin':
+            return '🔄 Round Robin';
+
+        default:
+            return capitalize(
+                String(
+                    format ||
+                    'Unknown'
+                )
+            );
+    }
+}
+
+// ==========================================
+// TOURNAMENT STATUS DISPLAY
+// ==========================================
+
+function getTournamentStatusDisplay(
+    tournament
+) {
+
+    if (!tournament) {
+        return '❌ Not Found';
+    }
+
+    if (
+        isTournamentComplete(
+            tournament
+        )
+    ) {
+
+        return '🏁 Complete';
+    }
+
+    if (
+        isTournamentActive(
+            tournament
+        )
+    ) {
+
+        return '🟢 Active';
+    }
+
+    return '⚪ Inactive';
+}
+
+// ==========================================
+// BUILD TOURNAMENT DETAILS
+// ==========================================
+
+function buildTournamentDetails(
+    tournament
+) {
+
+    if (!tournament) {
+        return '❌ Tournament not found.';
+    }
+
+    return [
+        `🏆 **${tournament.name || 'Unnamed Tournament'}**`,
+        `👥 Teams: **${tournament.teamsCount || 0}**`,
+        `📊 Groups: **${tournament.groupsCount || 0}**`,
+        `🎯 Format: **${getFormatDisplay(tournament.format)}**`,
+        `🗓️ Matchdays: **${tournament.totalMatchdays || 0}**`,
+        `⚽ Fixtures: **${getTournamentFixtureCount(tournament)}**`,
+        `📈 Progress: **${getTournamentProgress(tournament)}%**`,
+        `📌 Status: **${getTournamentStatusDisplay(tournament)}**`
+    ].join(
+        '\n'
+    );
+}
             10
         );
 
@@ -3939,7 +6856,7 @@ setInterval(async () => {
         const activeTournaments = await Tournament.find({
             status: 'complete',
             isActive: true,
-            "scheduledMatches.unlockAt": { \$lte: now },
+            "scheduledMatches.unlockAt": { $lte: now },
             "scheduledMatches.triggered": false
         });
 
