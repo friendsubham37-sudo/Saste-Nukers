@@ -945,7 +945,8 @@ if (baseCommand === 'draw') {
 
                                     fixtureLines +=
                                         `⚽ **Match ${match.displayId}:** ` +
-                                        `${homeRole} vs ${awayRole} in ${assignedStadium}\n`;
+                                        `${homeRole} vs ${awayRole} in ${assignedStadium}\n` +
+                                        `Scheduled At: ${scheduledAt}\n`;
                                 }
                             );
 
@@ -2064,6 +2065,178 @@ const targetUnlockDate = new Date(
                         `🔒 *Stadium Locked*`
                     );
                 }
+                // ==========================================
+// 5. STAFF COMMAND
+// ==========================================
+
+if (
+    baseCommand === 'staff'
+) {
+
+    const staffType =
+        args
+            .shift()
+            ?.toLowerCase();
+
+    const tournament =
+        await Tournament.findOne({
+            guildId:
+                message.guildId,
+
+            isActive:
+                true,
+
+            status:
+                'complete'
+        });
+
+    if (!tournament) {
+
+        return message.reply(
+            '❌ No active tournament workspace found.'
+        );
+    }
+
+    // ==========================================
+    // -staff role @role
+    // ==========================================
+
+    if (
+        staffType === 'role'
+    ) {
+
+        const role =
+            message.mentions.roles.first();
+
+        if (!role) {
+
+            return message.reply(
+                '❌ Please mention a staff role.\n' +
+                'Example: `-staff role @Staff`'
+            );
+        }
+
+        tournament.staffRoleId =
+            role.id;
+
+        await tournament.save();
+
+        return message.reply(
+            `✅ Staff role set to ${role}.`
+        );
+    }
+
+    // ==========================================
+    // -staff channel #channel
+    // ==========================================
+
+    if (
+        staffType === 'channel'
+    ) {
+
+        const channel =
+            message.mentions.channels.first();
+
+        if (!channel) {
+
+            return message.reply(
+                '❌ Please mention a staff channel.\n' +
+                'Example: `-staff channel #staff`'
+            );
+        }
+
+        tournament.staffChannelId =
+            channel.id;
+
+        await tournament.save();
+
+        return message.reply(
+            `✅ Staff alert channel set to ${channel}.`
+        );
+    }
+
+    // ==========================================
+    // -staff
+    // ==========================================
+
+    if (!staffType) {
+
+        const roleText =
+            tournament.staffRoleId
+                ? `<@&${tournament.staffRoleId}>`
+                : 'Not configured';
+
+        const channelText =
+            tournament.staffChannelId
+                ? `<#${tournament.staffChannelId}>`
+                : 'Not configured';
+
+        const alertStatus =
+            tournament.staffRoleId &&
+            tournament.staffChannelId
+                ? 'Enabled'
+                : 'Not configured';
+
+        const staffEmbed =
+            new EmbedBuilder()
+                .setTitle(
+                    `Staff Configuration`
+                )
+                .setColor(
+                    '#3498DB'
+                )
+                .addFields(
+                    {
+                        name:
+                            'Staff Role',
+
+                        value:
+                            roleText,
+
+                        inline:
+                            true
+                    },
+                    {
+                        name:
+                            'Staff Alert Channel',
+
+                        value:
+                            channelText,
+
+                        inline:
+                            true
+                    },
+                    {
+                        name:
+                            'Automatic Match Alerts',
+
+                        value:
+                            alertStatus,
+
+                        inline:
+                            false
+                    }
+                )
+                .setFooter({
+                    text:
+                        'Use -staff role @role or -staff channel #channel'
+                })
+                .setTimestamp();
+
+        return message.reply({
+            embeds: [
+                staffEmbed
+            ]
+        });
+    }
+
+    return message.reply(
+        '❌ Unknown staff command.\n\n' +
+        '`-staff` — View staff configuration\n' +
+        '`-staff role @role` — Set staff role\n' +
+        '`-staff channel #channel` — Set staff alert channel'
+    );
+}
 
 
                 // ==========================================
@@ -3965,6 +4138,7 @@ setInterval(async () => {
                 if (!sched.triggered && new Date(sched.unlockAt) <= now) {
                     sched.triggered = true;
                     modified = true;
+                    
 
                     const channel = await client.channels.fetch(sched.channelId).catch(() => null);
                     if (channel && channel.isTextBased()) {
@@ -3979,6 +4153,50 @@ setInterval(async () => {
                             `${sched.homeRole} vs ${sched.awayRole}`
                         ).catch(err => console.error(err));
                     }
+                    // ==========================================
+// STAFF MATCH START ALERT
+// ==========================================
+
+if (
+    tourney.staffRoleId &&
+    tourney.staffChannelId
+) {
+
+    const staffChannel =
+        await client.channels
+            .fetch(tourney.staffChannelId)
+            .catch(() => null);
+
+    if (
+        staffChannel &&
+        staffChannel.isTextBased()
+    ) {
+
+        await staffChannel.send({
+
+            content:
+                `<@&${tourney.staffRoleId}> ` +
+                `${sched.homeRole} vs ${sched.awayRole} ` +
+                `is starting right now in <#${sched.channelId}>! ` +
+                `Go help pinging teams!`,
+
+            allowedMentions: {
+                roles: [
+                    tourney.staffRoleId
+                ],
+                parse: []
+            }
+
+        }).catch(err => {
+
+            console.error(
+                'Failed to send staff match alert:',
+                err
+            );
+
+        });
+    }
+}
                 }
             }
 
