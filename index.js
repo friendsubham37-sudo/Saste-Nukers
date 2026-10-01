@@ -2149,9 +2149,7 @@ const targetUnlockDate = new Date(
 
                                       inline:
                                             true
-                                    
-                                    
-                                    
+                                    }    
                                 )
                                 .setFooter({
                                     text:
