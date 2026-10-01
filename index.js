@@ -129,14 +129,30 @@ client.on(
         }
 
         // Only Bot Owner / Bot Admin / Bot Mod
-        const botAccess =
-            await getBotAccess(
-                message.author.id
-            );
+        // Get global bot access levels
+        const botAccess = await getBotAccess(message.author.id);
 
+        // Look up the active completed tournament to check for server-specific staff roles
+        const activeTournamentInstance = await Tournament.findOne({
+            guildId: message.guildId,
+            isActive: true,
+            status: 'complete'
+        });
+
+        const hasStaffRole = activeTournamentInstance && 
+                             activeTournamentInstance.staffRoleId && 
+                             message.member?.roles.cache.has(activeTournamentInstance.staffRoleId);
+
+        // If the user has no global bot access
         if (!botAccess) {
-            return;
+            // They can ONLY proceed if they have the staff role AND are trying to run the -annc command
+            if (hasStaffRole && message.content.startsWith(`${PREFIX}annc`)) {
+                // Allowed to bypass for announcements
+            } else {
+                return;
+            }
         }
+
 
         try {
 
@@ -205,39 +221,25 @@ client.on(
                     // -admin list
                     // ==========================================
 
-                    if (
-                        action === 'list'
-                    ) {
+                                        // ==========================================
+                    // -admin list
+                    // ==========================================
+                    if (action === 'list') {
+                        const admins = await BotAccess.find({ type: 'admin' });
 
-                        const admins =
-                            await BotAccess.find({
-                                type: 'admin'
-                            });
+                        const adminList = admins.length > 0
+                            ? admins.map((admin, index) => `${index + 1}. <@${admin.userId}>`).join('\n')
+                            : '📭 *No Bot Admins currently assigned.*';
 
-                        if (
-                            admins.length === 0
-                        ) {
+                        const listEmbed = new EmbedBuilder()
+                            .setTitle('🛡️ Bot Administration List')
+                            .setColor('#3498DB')
+                            .addFields({ name: '👥 Bot Admins', value: adminList })
+                            .setTimestamp();
 
-                            return message.reply(
-                                '📭 **No Bot Admins currently assigned.**'
-                            );
-                        }
-
-                        const adminList =
-                            admins
-                                .map(
-                                    (
-                                        admin,
-                                        index
-                                    ) =>
-                                        `${index + 1}. <@${admin.userId}>`
-                                )
-                                .join('\n');
-
-                        return message.reply(
-                            `## Bot Admin List\n\n${adminList}`
-                        );
+                        return message.reply({ embeds: [listEmbed] });
                     }
+
 
                     // ==========================================
                     // -admin remove
@@ -699,40 +701,25 @@ if (baseCommand === 'draw') {
                     // -mod list
                     // ==========================================
 
-                    if (
-                        action === 'list'
-                    ) {
+                               // ==========================================
+                    // -mod list
+                    // ==========================================
+                    if (action === 'list') {
+                        const mods = await BotAccess.find({ type: 'mod' });
 
-                        const mods =
-                            await BotAccess.find({
-                                type:
-                                    'mod'
-                            });
+                        const modList = mods.length > 0
+                            ? mods.map((mod, index) => `${index + 1}. <@${mod.userId}>`).join('\n')
+                            : '📭 *No Bot Mods currently assigned.*';
 
-                        if (
-                            mods.length === 0
-                        ) {
+                        const listEmbed = new EmbedBuilder()
+                            .setTitle('⚔️ Bot Moderator List')
+                            .setColor('#E67E22')
+                            .addFields({ name: '👥 Bot Moderators', value: modList })
+                            .setTimestamp();
 
-                            return message.reply(
-                                '📭 **No Bot Mods currently assigned.**'
-                            );
-                        }
-
-                        const modList =
-                            mods
-                                .map(
-                                    (
-                                        mod,
-                                        index
-                                    ) =>
-                                        `${index + 1}. <@${mod.userId}>`
-                                )
-                                .join('\n');
-
-                        return message.reply(
-                            `## Bot Mod List\n\n${modList}`
-                        );
+                        return message.reply({ embeds: [listEmbed] });
                     }
+
 
                     // ==========================================
                     // ADD MOD
@@ -2152,11 +2139,23 @@ const targetUnlockDate = new Date(
 
                                         inline:
                                             false
-                                    }
+                                    },
+                                    {
+                                      name:
+                                            '👥 Staff Role',
+
+                                      value:
+                                            tournament.staffRoleId ? `<@&${tournament.staffRoleId}>` : '**Not Set**',
+
+                                      inline:
+                                            true
+                                    
+                                    
+                                    
                                 )
                                 .setFooter({
                                     text:
-                                        'Use -panel overs, -panel reps, -panel fd or -panel rd to change settings.'
+                                        'Use -panel overs, -panel staff, -panel reps, -panel fd or -panel rd to change settings.'
                                 })
                                 .setTimestamp();
 
@@ -2270,6 +2269,36 @@ const targetUnlockDate = new Date(
                             ]
                         });
                     }
+                                        // ==========================================
+                    // -panel staff <@role / roleID / roleName>
+                    // ==========================================
+                    if (panelType === 'staff') {
+                        const roleInput = args.join(' ').trim();
+                        if (!roleInput) {
+                            return message.reply('❌ **Usage Error:** Provide a role mention, ID, or name.\nExample: `-panel staff @Staff`');
+                        }
+
+                        // Parse by mention, explicit ID, or case-insensitive matching name string
+                        const targetRole = message.mentions.roles.first() || 
+                                           message.guild.roles.cache.get(roleInput) || 
+                                           message.guild.roles.cache.find(r => r.name.toLowerCase() === roleInput.toLowerCase());
+
+                        if (!targetRole) {
+                            return message.reply('❌ **Error:** That role could not be found in this server.');
+                        }
+
+                        tournament.staffRoleId = targetRole.id;
+                        await tournament.save();
+
+                        const embed = new EmbedBuilder()
+                            .setTitle('⚙️ Match Settings Updated')
+                            .setColor('#2ECC71')
+                            .setDescription(`The tournament staff role has been successfully set to ${targetRole}.\n\nMembers holding this role can now lock/unlock channels via \`-annc\` without needing global bot access layout permissions.`)
+                            .setTimestamp();
+
+                        return message.reply({ embeds: [embed] });
+                    }
+
 
                     // ==========================================
                     // -panel rd
