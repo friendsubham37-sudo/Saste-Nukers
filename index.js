@@ -368,35 +368,35 @@ client.on(
 if (baseCommand === 'help') {
     const helpEmbed = new EmbedBuilder()
         .setTitle('🏆 Saste Nukers Commands')
-        .setDescription('Use the commands below with the prefix `-` to control your tournaments and server access permissions.')
+        .setDescription('Bot Prefix `-` (For Bot Moderators and Admins Only)')
         .setColor('#3498DB')
         .addFields(
             { 
                 name: '🏟️ Tournament Maker (`-tourney`)', 
-                value: '• `-tourney make <name>` — Launch the server creation manager wizard.\n• `-tourney open <name>` — Load a specific tournament file as active.\n• `-tourney all` — View every tournament registry saved to this guild.\n• `-tourney cancel` — Abort an open step-by-step setup wizard.\n• `-tourney reset` — Completely wipe out the database layout history.' 
+                value: '• `-tourney make <name>` — Make a tournament \n• `-tourney open <name>` — Load a specific exisiting tournament.\n• `-tourney all` — View every tournament exisiting tournament.\n• `-tourney cancel` — Abort a ongoing tournamnt wizard.\n• `-tourney reset` — Reset all the existing tournaments.' 
             },
             { 
                 name: '📅 Tournament Matchday (`-md`)', 
-                value: '• `-md <number>` — Output structural game sheets for a targeted matchday stage (e.g., `-md 1`).' 
+                value: '• `-md <number>` — Check a certain matchday fixtures (e.g., `-md 1`).' 
             },
             { 
-                name: '📌 Tournament Fixtures (`-fixture`)', 
-                value: '• `-fixture <number>` — Output custom matchday schedule logs for teams.\n• `-fixture reserve` — Output structural calendars for items sitting on standby flags.' 
+                name: '📌 Tournament Fixtures (`-fixture`) [🔴Warning! A Dangerous Command that pings teams] ', 
+                value: '• `-fixture <number>` —  a well-designed fixture message for any matchday fixtures \n• `-fixture reserve` — Output structural calendars for items sitting on standby flags.' 
             },
             { 
-                name: '⏱️ Reserver Tournament Matches (`-reserve`)', 
-                value: '• `-reserve` — View all active entries waiting on the overflow queue.\n• `-reserve <match_num>` — Push a standard tournament match to the standby reservation list.' 
+                name: '⏱️ Reserved Tournament Matches (`-reserve`)', 
+                value: '• `-reserve` — View all Reserved Matches.\n• `-reserve <match_num>` — Reserve a match.' 
             },
             { 
                 name: '⚙️ Fixture Settings (`-panel`)', 
-                value: '• `-panel` — View global parameters (Overs, Deadlines, Player Reps settings).\n• `-panel overs <number>` — Change matching frame counts (e.g., `-panel overs 20`).\n• `-panel reps <allowed/not allowed>` — Toggle team player rotation rules.\n• `-panel fd <days>` — Configure opening phase timeline restrictions.\n• `-panel rd <days>` — Configure wrapping phase calendar boundaries.' 
+                value: '• `-panel` — Useful Settings For `-fixture` (Overs, Deadlines, Player Reps settings).\n• `-panel overs <number>` — Total Overs (default 20).\n• `-panel reps <allowed/not allowed>` — Reps allowed or not(default Allowed).\n• `-panel fd <days>` — Extend the first day fixture deadline (default 1).\n• `-panel rd <days>` — extend the reserved days deadline(default 2).' 
             },
             { 
-                name: '🔑 Bot Access Security (`-admin` / `-mod`)', 
-                value: '• `-admin <@user/ID>` — Appoint a platform Bot Administrator.\n• `-admin list` / `-admin remove <@user>` — Review and adjust administrative tier slots.\n• `-mod <@user/ID>` — Appoint a structural staff Moderator.\n• `-mod list` / `-mod remove <@user>` — Review and manage server moderator positions.' 
+                name: '🔑 Bot Access (`-admin` / `-mod`)', 
+                value: '• `-admin <@user/ID>` — Appoint a Bot Administrator(Bot Owner Only).\n• `-admin list` / `-admin remove <@user>` — Remove a Bot Administrator(Bot Owner Only).\n• `-mod <@user/ID>` — Appoint a Bot Moderator(Bot Owner/Bot Admins Only).\n• `-mod list` / `-mod remove <@user>` — Review and manage server moderator positions(Bot Owner/Admins Only).' 
             }
         )
-        .setFooter({ text: 'Ensure the prefix (-) is attached before calling any feature command line string.' })
+        .setFooter({ text: '📌Note Only Bot Moderators can use the commands written above and Bot Admins can appoint Moderators.' })
         .setTimestamp();
 
     return message.reply({ embeds: [helpEmbed] });
