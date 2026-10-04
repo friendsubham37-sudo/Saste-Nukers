@@ -2046,9 +2046,8 @@ const targetUnlockDate = new Date(
 
                     // BROADCAST CUSTOMIZED LAUNCH PREVIEW PREPARATIONS CONTENT
                     return message.channel.send(
-                        `## ${homeRole} **vs** ${awayRole}\n` +
-                        `### Kick-off Time: <t:${targetTimestamp}:F>\n` +
-                        `🔒 *Stadium Locked*`
+                        `## ${homeRole} <:vs:1556294619711414312> ${awayRole}\n` +
+                        `### <:annc:1556295358177480725> <t:${targetTimestamp}:F>\n`
                     );
                 }
 
@@ -4002,8 +4001,8 @@ setInterval(async () => {
 
                         // SEND LAUNCH ANNOUNCEMENT MESSAGE
                         await channel.send(
-                            `🔔 **Match Time!**\n` +
-                            `${sched.homeRole} vs ${sched.awayRole}`
+                            `<:annc:1556295358177480725> **Match Time<a:mark:1556295747186458654>**\n` +
+                            `${sched.homeRole} <:vs:1556294619711414312> ${sched.awayRole}`
                         ).catch(err => console.error(err));
                     }
                 }
