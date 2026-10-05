@@ -1938,13 +1938,23 @@ if (subCommand === 'reset') {
                 // -annc <TIME> COMMAND
                 // Example: -annc 7:30PM
                 // ==========================================
+                                // ==========================================
+                // -annc <MATCHDAY> <TIME> COMMAND
+                // Example: -annc 3 7:30PM
+                // ==========================================
                 if (baseCommand === 'annc') {
-                    const timeInput = args.join(' ').trim();
-                    if (!timeInput) {
-                        return message.reply('❌ **Usage Error:** Provide a target launch time.\nExample: `-annc 7:30PM`');
+                    // Extract the matchday number from the first argument
+                    const targetMDInput = args[0];
+                    // Extract the rest of the arguments as the time string
+                    const timeInput = args.slice(1).join(' ').trim();
+
+                    const targetMatchdayNum = parseInt(targetMDInput, 10);
+
+                    if (isNaN(targetMatchdayNum) || !timeInput) {
+                        return message.reply('❌ **Usage Error:** Provide a target matchday number and launch time.\nExample: `-annc 3 7:30PM`');
                     }
 
-                    // Look up active active tournament mapping configuration
+                    // Look up active tournament mapping configuration
                     const tournament = await Tournament.findOne({
                         guildId: message.guildId,
                         isActive: true,
@@ -1955,7 +1965,7 @@ if (subCommand === 'reset') {
                         return message.reply('❌ No active completed tournament workspace currently found in this server.');
                     }
 
-                    // SEARCH FOR A MATCH ASSIGNED TO THIS SPECIFIC STADIUM CHANNEL
+                    // SEARCH FOR A MATCH ASSIGNED TO THIS SPECIFIC STADIUM CHANNEL AND MATCHDAY
                     let activeMatch = null;
                     let activeMatchId = null;
 
@@ -1963,8 +1973,11 @@ if (subCommand === 'reset') {
                         const homeChan = extractChannel(registryMatch.home);
                         const awayChan = extractChannel(registryMatch.away);
                         
-                        // Check if the current channel matches either home or away stadium configuration
-                        if (homeChan === `<#${message.channelId}>` || awayChan === `<#${message.channelId}>`) {
+                        // FIX: Verify BOTH the channel ID and that it belongs to the specified matchday
+                        if (
+                            (homeChan === `<#${message.channelId}>` || awayChan === `<#${message.channelId}>`) && 
+                            registryMatch.day === targetMatchdayNum
+                        ) {
                             activeMatch = registryMatch;
                             activeMatchId = matchId;
                             break;
@@ -1972,15 +1985,15 @@ if (subCommand === 'reset') {
                     }
 
                     if (!activeMatch) {
-                        return message.reply('❌ **Error:** No match registry data is configured for this stadium channel.');
+                        return message.reply(`❌ **Error:** No match registry data found for this stadium channel on **Matchday ${targetMatchdayNum}**.`);
                     }
 
                     // PARSE TIME STRING (Assumes India Standard Time context per deadline parameters)
-                    const timeRegex = /^(\d{1,2}):(\d{2})\s*(AM|PM)$/i;
+                    const timeRegex = /^(\d{1,2}):(\d{2})\s*(AM|PM)\$/i;
                     const matchTimeParts = timeInput.match(timeRegex);
 
                     if (!matchTimeParts) {
-                        return message.reply('❌ **Invalid Time Format!** Use `HH:MM AM/PM` configuration layout.\nExample: `-annc 7:30PM`');
+                        return message.reply('❌ **Invalid Time Format!** Use `HH:MM AM/PM` configuration layout.\nExample: `-annc 3 7:30PM`');
                     }
 
                     let hours = parseInt(matchTimeParts[1], 10);
@@ -1993,20 +2006,20 @@ if (subCommand === 'reset') {
                     // Form target processing timestamp date bound inside local server frame
                     const now = new Date();
 
-const istParts = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'Asia/Kolkata',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-}).formatToParts(now);
+                    const istParts = new Intl.DateTimeFormat('en-US', {
+                        timeZone: 'Asia/Kolkata',
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit'
+                    }).formatToParts(now);
 
-const year = Number(istParts.find(p => p.type === 'year').value);
-const month = Number(istParts.find(p => p.type === 'month').value);
-const day = Number(istParts.find(p => p.type === 'day').value);
+                    const year = Number(istParts.find(p => p.type === 'year').value);
+                    const month = Number(istParts.find(p => p.type === 'month').value);
+                    const day = Number(istParts.find(p => p.type === 'day').value);
 
-const targetUnlockDate = new Date(
-    Date.UTC(year, month - 1, day, hours, minutes, 0) - (5.5 * 60 * 60 * 1000)
-);
+                    const targetUnlockDate = new Date(
+                        Date.UTC(year, month - 1, day, hours, minutes, 0) - (5.5 * 60 * 60 * 1000)
+                    );
 
                     // If user provides a time that has already passed today, assume they mean tomorrow
                     if (targetUnlockDate <= now) {
@@ -2050,6 +2063,7 @@ const targetUnlockDate = new Date(
                         `### <:annc:1556295358177480725> <t:${targetTimestamp}:F>\n`
                     );
                 }
+
 
 
                 // ==========================================
