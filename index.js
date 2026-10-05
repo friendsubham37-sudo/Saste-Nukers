@@ -10,131 +10,7 @@ const Tournament = require('./Tournament');
                 // -annc <MATCHDAY> <TIME> COMMAND
                 // Example: -annc 3 7:30PM or -annc 1 6:14pm
                 // ==========================================
-                if (baseCommand === 'annc') {
-                    // Extract the matchday number from the first argument
-                    const targetMDInput = args[0];
-                    // Extract the rest of the arguments as the time string and clean it up
-                    const timeInput = args.slice(1).join(' ').trim().toUpperCase();
-
-                    const targetMatchdayNum = parseInt(targetMDInput, 10);
-
-                    if (isNaN(targetMatchdayNum) || !timeInput) {
-                        return message.reply('❌ **Usage Error:** Provide a target matchday number and launch time.\nExample: `-annc 3 7:30PM`');
-                    }
-
-                    // Look up active tournament mapping configuration
-                    const tournament = await Tournament.findOne({
-                        guildId: message.guildId,
-                        isActive: true,
-                        status: 'complete'
-                    });
-
-                    if (!tournament) {
-                        return message.reply('❌ No active completed tournament workspace currently found in this server.');
-                    }
-
-                    // SEARCH FOR A MATCH ASSIGNED TO THIS SPECIFIC STADIUM CHANNEL AND MATCHDAY
-                    let activeMatch = null;
-                    let activeMatchId = null;
-
-                    for (const [matchId, registryMatch] of tournament.matchRegistry.entries()) {
-                        const homeChan = extractChannel(registryMatch.home);
-                        const awayChan = extractChannel(registryMatch.away);
-                        
-                        // Verify BOTH the channel ID and that it belongs to the specified matchday
-                        if (
-                            (homeChan === `<#${message.channelId}>` || awayChan === `<#${message.channelId}>`) && 
-                            registryMatch.day === targetMatchdayNum
-                        ) {
-                            activeMatch = registryMatch;
-                            activeMatchId = matchId;
-                            break;
-                        }
-                    }
-
-                    if (!activeMatch) {
-                        return message.reply(`❌ **Error:** No match registry data found for this stadium channel on **Matchday ${targetMatchdayNum}**.`);
-                    }
-
-                    // PARSE TIME STRING (Handles both "6:14PM" and "6:14 PM")
-                    const timeRegex = /^(\d{1,2}):(\d{2})\s*(AM|PM)\$/;
-                    const matchTimeParts = timeInput.match(timeRegex);
-
-                    if (!matchTimeParts) {
-                        return message.reply('❌ **Invalid Time Format!** Use `HH:MM AM/PM` configuration layout.\nExample: `-annc 3 7:30PM`');
-                    }
-
-                    let hours = parseInt(matchTimeParts[1], 10);
-                    const minutes = parseInt(matchTimeParts[2], 10);
-                    const ampm = matchTimeParts[3];
-
-                    if (hours < 1 || hours > 12 || minutes < 0 || minutes > 59) {
-                        return message.reply('❌ **Invalid Time Value!** Please provide a valid clock time.');
-                    }
-
-                    if (ampm === 'PM' && hours < 12) hours += 12;
-                    if (ampm === 'AM' && hours === 12) hours = 0;
-
-                    // Form target processing timestamp date bound inside local server frame
-                    const now = new Date();
-
-                    const istParts = new Intl.DateTimeFormat('en-US', {
-                        timeZone: 'Asia/Kolkata',
-                        year: 'numeric',
-                        month: '2-digit',
-                        day: '2-digit'
-                    }).formatToParts(now);
-
-                    const year = Number(istParts.find(p => p.type === 'year').value);
-                    const month = Number(istParts.find(p => p.type === 'month').value);
-                    const day = Number(istParts.find(p => p.type === 'day').value);
-
-                    const targetUnlockDate = new Date(
-                        Date.UTC(year, month - 1, day, hours, minutes, 0) - (5.5 * 60 * 60 * 1000)
-                    );
-
-                    // If user provides a time that has already passed today, assume they mean tomorrow
-                    if (targetUnlockDate <= now) {
-                        targetUnlockDate.setDate(targetUnlockDate.getDate() + 1);
-                    }
-
-                    const targetTimestamp = Math.floor(targetUnlockDate.getTime() / 1000);
-
-                    // LOCK CHANNEL PERMISSIONS IMMEDIATELY: Stop players from typing until kick-off
-                    await message.channel.permissionOverwrites.edit(message.guild.roles.everyone, {
-                        SendMessages: false
-                    }).catch(err => {
-                        console.error(err);
-                        return message.reply('❌ Failed to lock this channel. Ensure the bot has **Manage Channels** or **Manage Roles** permissions.');
-                    });
-
-                    // SAVE THE ACTION LOG TO THE DATABASE ARRAY
-                    if (!tournament.scheduledMatches) tournament.scheduledMatches = [];
-                    
-                    const homeRole = extractRole(activeMatch.home);
-                    const awayRole = extractRole(activeMatch.away);
-
-                    tournament.scheduledMatches.push({
-                        matchId: activeMatchId,
-                        channelId: message.channelId,
-                        unlockAt: targetUnlockDate,
-                        homeRole: homeRole,
-                        awayRole: awayRole,
-                        triggered: false
-                    });
-
-                    tournament.markModified('scheduledMatches');
-                    await tournament.save();
-
-                    // REMOVE ADMINISTRATIVE TRIGGER MESSAGE TO KEEP STADIUM VENUE LOOKING CLEAN
-                    await message.delete().catch(() => null);
-
-                    // BROADCAST CUSTOMIZED LAUNCH PREVIEW PREPARATIONS CONTENT
-                    return message.channel.send(
-                        `## ${homeRole} <:vs:1556294619711414312> ${awayRole}\n` +
-                        `### <:annc:1556295358177480725> <t:${targetTimestamp}:F>\n`
-                    );
-                }
+               
 
 
 const {
@@ -535,6 +411,131 @@ if (baseCommand === 'help') {
 
     return message.reply({ embeds: [helpEmbed] });
 }
+               if (baseCommand === 'annc') {
+                    // Extract the matchday number from the first argument
+                    const targetMDInput = args[0];
+                    // Extract the rest of the arguments as the time string and clean it up
+                    const timeInput = args.slice(1).join(' ').trim().toUpperCase();
+
+                    const targetMatchdayNum = parseInt(targetMDInput, 10);
+
+                    if (isNaN(targetMatchdayNum) || !timeInput) {
+                        return message.reply('❌ **Usage Error:** Provide a target matchday number and launch time.\nExample: `-annc 3 7:30PM`');
+                    }
+
+                    // Look up active tournament mapping configuration
+                    const tournament = await Tournament.findOne({
+                        guildId: message.guildId,
+                        isActive: true,
+                        status: 'complete'
+                    });
+
+                    if (!tournament) {
+                        return message.reply('❌ No active completed tournament workspace currently found in this server.');
+                    }
+
+                    // SEARCH FOR A MATCH ASSIGNED TO THIS SPECIFIC STADIUM CHANNEL AND MATCHDAY
+                    let activeMatch = null;
+                    let activeMatchId = null;
+
+                    for (const [matchId, registryMatch] of tournament.matchRegistry.entries()) {
+                        const homeChan = extractChannel(registryMatch.home);
+                        const awayChan = extractChannel(registryMatch.away);
+                        
+                        // Verify BOTH the channel ID and that it belongs to the specified matchday
+                        if (
+                            (homeChan === `<#${message.channelId}>` || awayChan === `<#${message.channelId}>`) && 
+                            registryMatch.day === targetMatchdayNum
+                        ) {
+                            activeMatch = registryMatch;
+                            activeMatchId = matchId;
+                            break;
+                        }
+                    }
+
+                    if (!activeMatch) {
+                        return message.reply(`❌ **Error:** No match registry data found for this stadium channel on **Matchday ${targetMatchdayNum}**.`);
+                    }
+
+                    // PARSE TIME STRING (Handles both "6:14PM" and "6:14 PM")
+                    const timeRegex = /^(\d{1,2}):(\d{2})\s*(AM|PM)$/;
+                    const matchTimeParts = timeInput.match(timeRegex);
+
+                    if (!matchTimeParts) {
+                        return message.reply('❌ **Invalid Time Format!** Use `HH:MM AM/PM` configuration layout.\nExample: `-annc 3 7:30PM`');
+                    }
+
+                    let hours = parseInt(matchTimeParts[1], 10);
+                    const minutes = parseInt(matchTimeParts[2], 10);
+                    const ampm = matchTimeParts[3];
+
+                    if (hours < 1 || hours > 12 || minutes < 0 || minutes > 59) {
+                        return message.reply('❌ **Invalid Time Value!** Please provide a valid clock time.');
+                    }
+
+                    if (ampm === 'PM' && hours < 12) hours += 12;
+                    if (ampm === 'AM' && hours === 12) hours = 0;
+
+                    // Form target processing timestamp date bound inside local server frame
+                    const now = new Date();
+
+                    const istParts = new Intl.DateTimeFormat('en-US', {
+                        timeZone: 'Asia/Kolkata',
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit'
+                    }).formatToParts(now);
+
+                    const year = Number(istParts.find(p => p.type === 'year').value);
+                    const month = Number(istParts.find(p => p.type === 'month').value);
+                    const day = Number(istParts.find(p => p.type === 'day').value);
+
+                    const targetUnlockDate = new Date(
+                        Date.UTC(year, month - 1, day, hours, minutes, 0) - (5.5 * 60 * 60 * 1000)
+                    );
+
+                    // If user provides a time that has already passed today, assume they mean tomorrow
+                    if (targetUnlockDate <= now) {
+                        targetUnlockDate.setDate(targetUnlockDate.getDate() + 1);
+                    }
+
+                    const targetTimestamp = Math.floor(targetUnlockDate.getTime() / 1000);
+
+                    // LOCK CHANNEL PERMISSIONS IMMEDIATELY: Stop players from typing until kick-off
+                    await message.channel.permissionOverwrites.edit(message.guild.roles.everyone, {
+                        SendMessages: false
+                    }).catch(err => {
+                        console.error(err);
+                        return message.reply('❌ Failed to lock this channel. Ensure the bot has **Manage Channels** or **Manage Roles** permissions.');
+                    });
+
+                    // SAVE THE ACTION LOG TO THE DATABASE ARRAY
+                    if (!tournament.scheduledMatches) tournament.scheduledMatches = [];
+                    
+                    const homeRole = extractRole(activeMatch.home);
+                    const awayRole = extractRole(activeMatch.away);
+
+                    tournament.scheduledMatches.push({
+                        matchId: activeMatchId,
+                        channelId: message.channelId,
+                        unlockAt: targetUnlockDate,
+                        homeRole: homeRole,
+                        awayRole: awayRole,
+                        triggered: false
+                    });
+
+                    tournament.markModified('scheduledMatches');
+                    await tournament.save();
+
+                    // REMOVE ADMINISTRATIVE TRIGGER MESSAGE TO KEEP STADIUM VENUE LOOKING CLEAN
+                    await message.delete().catch(() => null);
+
+                    // BROADCAST CUSTOMIZED LAUNCH PREVIEW PREPARATIONS CONTENT
+                    return message.channel.send(
+                        `## ${homeRole} <:vs:1556294619711414312> ${awayRole}\n` +
+                        `### <:annc:1556295358177480725> <t:${targetTimestamp}:F>\n`
+                    );
+                }
 
 
                 // ===============================
